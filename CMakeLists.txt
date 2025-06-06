@@ -32,7 +32,11 @@ check_added_file_list(${SRC_DIR} cpp "${SRC_FILES}" "${SRC_FILES_IGNORE}")
 # Create a list of the header files.
 set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(INCLUDE_DIR_NESO_RNG_TOOLKIT ${INCLUDE_DIR}/neso_rng_toolkit)
-set(HEADER_FILES ${INCLUDE_DIR}/neso_rng_toolkit.hpp)
+set(HEADER_FILES
+    ${INCLUDE_DIR}/neso_rng_toolkit.hpp
+    ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/distribution.hpp
+    ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/rng.hpp
+    ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/typedefs.hpp)
 
 # Check that the files added above are not missing any files in the include
 # directory.
