@@ -25,7 +25,10 @@ if(NESO_RNG_TOOLKIT_ENABLE_FIND_SYCL)
 endif()
 
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
-set(SRC_FILES ${SRC_DIR}/neso_rng_toolkit.cpp)
+set(SRC_FILES 
+    ${SRC_DIR}/neso_rng_toolkit.cpp
+    ${SRC_DIR}/create_rng.cpp
+)
 set(SRC_FILES_IGNORE "")
 check_added_file_list(${SRC_DIR} cpp "${SRC_FILES}" "${SRC_FILES_IGNORE}")
 
@@ -34,6 +37,9 @@ set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(INCLUDE_DIR_NESO_RNG_TOOLKIT ${INCLUDE_DIR}/neso_rng_toolkit)
 set(HEADER_FILES
     ${INCLUDE_DIR}/neso_rng_toolkit.hpp
+    ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/create_rng.hpp
+    ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/platform.hpp
+    ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/platforms/stdlib.hpp
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/distribution.hpp
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/rng.hpp
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/typedefs.hpp)

@@ -16,17 +16,47 @@ template <typename VALUE_TYPE> struct RNG {
   std::size_t device_index;
 
   /**
-   * Draw random samples from the RNG.
+   * Start to draw random samples from the RNG. Internally this function calls
+   * submit_get_samples and wait_get_samples.
    *
    * @param[in, out] d_ptr Device pointer to fill with num_samples samples.
    * @param[in] num_samples Number of samples to place in device buffer.
    * @returns Error code to be tested against SUCCESS.
    */
-  virtual int get_samples(VALUE_TYPE *d_ptr, const std::size_t num_samples) = 0;
+  virtual int submit_get_samples(VALUE_TYPE *d_ptr,
+                                 const std::size_t num_samples) = 0;
+
+  /**
+   * Start to draw random samples from the RNG. Internally this function calls
+   * submit_get_samples and wait_get_samples.
+   *
+   * @param[in, out] d_ptr Device pointer to which is currently being populated
+   * with samples.
+   * @returns Error code to be tested against SUCCESS.
+   */
+  virtual int wait_get_samples(VALUE_TYPE *d_ptr) = 0;
+
+  /**
+   * Draw random samples from the RNG. Internally this function calls
+   * submit_get_samples and wait_get_samples.
+   *
+   * @param[in, out] d_ptr Device pointer to fill with num_samples samples.
+   * @param[in] num_samples Number of samples to place in device buffer.
+   * @returns Error code to be tested against SUCCESS.
+   */
+  int get_samples(VALUE_TYPE *d_ptr, const std::size_t num_samples){
+    int err = SUCCESS;
+    if ((err = this->submit_get_samples(d_ptr, num_samples)) != SUCCESS) {
+      return err;
+    }
+    return this->wait_get_samples(d_ptr);
+  }
+
 };
 
 template <typename VALUE_TYPE>
 using RNGSharedPtr = std::shared_ptr<RNG<VALUE_TYPE>>;
+
 } // namespace NESO::RNGToolkit
 
 #endif
