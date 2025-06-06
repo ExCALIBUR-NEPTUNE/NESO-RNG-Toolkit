@@ -24,7 +24,7 @@ template <typename VALUE_TYPE> inline void wrapper_uniform() {
 
   VALUE_TYPE *d_ptr =
       static_cast<VALUE_TYPE *>(sycl::malloc_device(num_bytes, queue));
-  to_test_rng->get_samples(d_ptr, N, 511);
+  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N, 511) == SUCCESS);
   std::vector<VALUE_TYPE> to_test(N);
   queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
 
@@ -51,7 +51,7 @@ template <typename VALUE_TYPE> inline void wrapper_normal() {
 
   VALUE_TYPE *d_ptr =
       static_cast<VALUE_TYPE *>(sycl::malloc_device(num_bytes, queue));
-  to_test_rng->get_samples(d_ptr, N, 511);
+  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N, 511) == SUCCESS);
   std::vector<VALUE_TYPE> to_test(N);
   queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
 
