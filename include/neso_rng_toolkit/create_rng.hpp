@@ -13,7 +13,19 @@ namespace NESO::RNGToolkit {
 std::string get_default_platform();
 
 /**
- * This is the function users could call to create and RNG instance.
+ * Create N seeds, e.g. for N MPI ranks and returns the i-th.
+ *
+ * @param size Number of seeds to create, e.g. number of MPI ranks.
+ * @param rank Index to return from this call, e.g. the MPI rank.
+ * @param seed Base seed to generate seeds from, this should be identical to all
+ * calls of this function.
+ * @returns The seed indicated by the rank argument.
+ */
+std::uint64_t create_seeds(std::size_t size, std::size_t rank,
+                           std::uint64_t seed);
+
+/**
+ * This is the function users could call to create a RNG instance.
  *
  * @param distribution Distribution RNG samples should be from.
  * @param seed Value to seed RNG with.
