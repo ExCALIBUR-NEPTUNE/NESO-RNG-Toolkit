@@ -37,7 +37,7 @@ foreach(TEST ${TEST_SRCS})
 
   set(TEST_SOURCES ${TEST_MAIN} ${TEST})
   add_executable(${TEST_NAME} ${TEST_SOURCES})
-  target_link_libraries(${TEST_NAME} PRIVATE NESO-RNGToolkit GTest::gtest)
+  target_link_libraries(${TEST_NAME} PRIVATE NESO-RNG-Toolkit GTest::gtest)
   target_compile_definitions(${TEST_NAME}
                              PRIVATE NESO_RNG_TOOLKIT_TEST_COMPILATION)
   target_compile_definitions(
