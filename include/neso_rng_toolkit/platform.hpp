@@ -12,6 +12,8 @@ namespace NESO::RNGToolkit {
  */
 template <typename VALUE_TYPE> struct Platform {
 
+  virtual ~Platform() = default;
+
   /*
    * Create an RNG instance.
    *
