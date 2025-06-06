@@ -75,7 +75,9 @@ struct StdLibRNG : public RNG<VALUE_TYPE> {
   }
 
   StdLibRNG(sycl::queue queue, std::uint64_t seed, DIST_TYPE dist)
-      : queue(queue), rng(RNG_TYPE{seed}), dist(dist) {}
+      : queue(queue), rng(RNG_TYPE{seed}), dist(dist) {
+    this->platform_name = "stdlib";
+  }
 };
 
 /**

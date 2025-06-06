@@ -14,6 +14,8 @@ template <typename VALUE_TYPE> struct RNG {
   sycl::device device;
   /// The index in the platform of the device.
   std::size_t device_index;
+  /// The name of the platform.
+  std::string platform_name{"undefined"};
 
   /**
    * Start to draw random samples from the RNG. Internally this function calls

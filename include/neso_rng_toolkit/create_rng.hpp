@@ -31,14 +31,20 @@ create_rng(DISTRIBUTION_TYPE distribution, std::uint64_t seed,
   if (platform_name == "default") {
     platform_name = get_default_platform();
   }
-  platform_name = get_env_string("NESO_RNG_TOOLKIT_PLATFORM", platform_name);
+  platform_name =
+      Private::get_env_string("NESO_RNG_TOOLKIT_PLATFORM", platform_name);
 
   if (platform_name == "stdlib") {
-    return StdLibPlatform<VALUE_TYPE>{}.create_rng(distribution, seed, device,
-                                                   device_index);
+    rng = StdLibPlatform<VALUE_TYPE>{}.create_rng(distribution, seed, device,
+                                                  device_index);
   }
 
-  return nullptr;
+  if (Private::get_env_size_t("NESO_RNG_TOOLKIT_PLATFORM_VERBOSE", 0)) {
+    std::cout << "NESO-RNG-Toolkit RNG Platform: " << rng->platform_name
+              << std::endl;
+  }
+
+  return rng;
 }
 
 } // namespace NESO::RNGToolkit
