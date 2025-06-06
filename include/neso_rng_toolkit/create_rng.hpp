@@ -31,7 +31,7 @@ create_rng(DISTRIBUTION_TYPE distribution, std::uint64_t seed,
   if (platform_name == "default") {
     platform_name = get_default_platform();
   }
-  platform_name = get_env_string("NESO_RNG_TOOLKIT", platform_name);
+  platform_name = get_env_string("NESO_RNG_TOOLKIT_PLATFORM", platform_name);
 
   if (platform_name == "stdlib") {
     return StdLibPlatform<VALUE_TYPE>{}.create_rng(distribution, seed, device,
