@@ -3,6 +3,7 @@
 
 #include "../platform.hpp"
 #include "../rng.hpp"
+#include <random>
 
 namespace NESO::RNGToolkit {
 
