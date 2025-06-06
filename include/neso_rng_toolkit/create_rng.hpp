@@ -1,6 +1,7 @@
 #ifndef _NESO_RNG_TOOLKIT_CREATE_RNG_HPP_
 #define _NESO_RNG_TOOLKIT_CREATE_RNG_HPP_
 
+#include "platforms/onedpl.hpp"
 #include "platforms/stdlib.hpp"
 #include "rng.hpp"
 
@@ -39,7 +40,14 @@ create_rng(DISTRIBUTION_TYPE distribution, std::uint64_t seed,
                                                   device_index);
   }
 
-  if (Private::get_env_size_t("NESO_RNG_TOOLKIT_PLATFORM_VERBOSE", 0)) {
+  if (platform_name == "onedpl") {
+    rng = OneDPLPlatform<VALUE_TYPE>{}.create_rng(distribution, seed, device,
+                                                  device_index);
+  }
+
+  if (rng == nullptr) {
+    std::cout << "Unknown RNG platform: " << platform_name << std::endl;
+  } else if (Private::get_env_size_t("NESO_RNG_TOOLKIT_PLATFORM_VERBOSE", 0)) {
     std::cout << "NESO-RNG-Toolkit RNG Platform: " << rng->platform_name
               << std::endl;
   }

@@ -16,8 +16,9 @@ if(NOT GTest_FOUND)
 endif()
 
 set(TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-set(TEST_SRCS ${TEST_DIR}/test_version_print.cpp
-              ${TEST_DIR}/test_platform_stdlib.cpp)
+set(TEST_SRCS
+    ${TEST_DIR}/test_version_print.cpp ${TEST_DIR}/test_platform_stdlib.cpp
+    ${TEST_DIR}/test_platform_onedpl.cpp)
 
 # Check that the files added above are not missing any files in the test
 # directory.

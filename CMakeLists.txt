@@ -12,6 +12,9 @@ option(
   NESO_RNG_TOOLKIT_ENABLE_FIND_SYCL
   "Enabling search for a SYCL implementation if add_sycl_to_target is not found."
   ON)
+option(NESO_RNG_TOOLKIT_ENABLE_ONEDPL "Enable using oneDPL if found." ON)
+option(NESO_RNG_TOOLKIT_REQUIRE_ONEDPL "Force using oneDPL." OFF)
+option(NESO_RNG_TOOLKIT_ENABLE_TESTS "Build unit tests for this project." ON)
 
 # This means that when the tests and lib are installed they have rpath set for
 # the installed lib/binary.
@@ -25,7 +28,8 @@ if(NESO_RNG_TOOLKIT_ENABLE_FIND_SYCL)
 endif()
 
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
-set(SRC_FILES ${SRC_DIR}/neso_rng_toolkit.cpp ${SRC_DIR}/create_rng.cpp)
+set(SRC_FILES ${SRC_DIR}/neso_rng_toolkit.cpp ${SRC_DIR}/create_rng.cpp
+              ${SRC_DIR}/platforms/stdlib.cpp)
 set(SRC_FILES_IGNORE "")
 check_added_file_list(${SRC_DIR} cpp "${SRC_FILES}" "${SRC_FILES_IGNORE}")
 
@@ -37,6 +41,7 @@ set(HEADER_FILES
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/create_rng.hpp
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/platform.hpp
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/platforms/stdlib.hpp
+    ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/platforms/onedpl.hpp
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/distribution.hpp
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/rng.hpp
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/typedefs.hpp)
@@ -55,6 +60,35 @@ add_library(NESO-RNG-Toolkit::NESO-RNG-Toolkit ALIAS NESO-RNG-Toolkit)
 
 # Set standard
 set_property(TARGET NESO-RNG-Toolkit PROPERTY CXX_STANDARD 17)
+
+# Does oneDPL exist and enabled?
+if(NESO_RNG_TOOLKIT_REQUIRE_ONEDPL)
+  find_package(oneDPL REQUIRED)
+elseif(NESO_RNG_TOOLKIT_ENABLE_ONEDPL)
+  find_package(oneDPL QUIET)
+endif()
+
+if(oneDPL_FOUND)
+  message(STATUS "oneDPL Found")
+
+  set(ORIG_CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
+  set(CMAKE_REQUIRED_LIBRARIES oneDPL)
+  check_cxx_source_compiles(
+    "
+      #include <sycl/sycl.hpp>
+      #include <oneapi/dpl/random>
+      int main(int argc, char ** argv) {return 0;}
+      "
+    COMPILES_ONEDPL)
+  set(CMAKE_REQUIRED_LIBRARIES ${ORIG_CMAKE_REQUIRED_LIBRARIES})
+
+  if(COMPILES_ONEDPL)
+    target_compile_definitions(NESO-RNG-Toolkit PUBLIC NESO_RNG_TOOLKIT_ONEDPL)
+    target_link_libraries(NESO-RNG-Toolkit PUBLIC oneDPL)
+  endif()
+else()
+  message(STATUS "oneDPL NOT Found")
+endif()
 
 # Makes it easy to install + adds the files to the INCLUDE property of the lib
 # i.e. don't need target_include_dir.. also no GLOBS
@@ -79,8 +113,6 @@ target_compile_definitions(
 target_compile_definitions(
   NESO-RNG-Toolkit
   PUBLIC NESO_RNG_TOOLKIT_VERSION_PATCH=${CMAKE_PROJECT_VERSION_PATCH})
-
-option(NESO_RNG_TOOLKIT_ENABLE_TESTS "Build unit tests for this project." ON)
 
 add_sycl_to_target(TARGET NESO-RNG-Toolkit SOURCES ${SRC_FILES})
 

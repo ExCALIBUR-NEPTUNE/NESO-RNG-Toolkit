@@ -129,6 +129,9 @@ struct StdLibPlatform : public Platform<VALUE_TYPE> {
   }
 };
 
+extern template struct StdLibPlatform<double>;
+extern template struct StdLibPlatform<float>;
+
 } // namespace NESO::RNGToolkit
 
 #endif
