@@ -5,11 +5,6 @@ namespace NESO::RNGToolkit {
 /**
  * @returns The default platform name.
  */
-std::string get_default_platform(){
-  return "stdlib";
-}
+std::string get_default_platform() { return "stdlib"; }
 
-
-}
-
-
+} // namespace NESO::RNGToolkit

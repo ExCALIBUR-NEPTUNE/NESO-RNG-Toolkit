@@ -24,9 +24,13 @@ inline std::string get_env_string(const std::string key,
       std::string value = var_char;
       return value;
     } catch (...) {
-      std::cout << "Could not read " + key +
-             " and convert to int. Value of environment variable is: " + var_char +
-             " Will return the default value of: " + default_value << std::endl;;
+      std::cout
+          << "Could not read " + key +
+                 " and convert to int. Value of environment variable is: " +
+                 var_char +
+                 " Will return the default value of: " + default_value
+          << std::endl;
+      ;
       return default_value;
     }
   } else {
@@ -34,6 +38,6 @@ inline std::string get_env_string(const std::string key,
   }
 }
 
-}
+} // namespace NESO::RNGToolkit
 
 #endif

@@ -1,8 +1,8 @@
 #ifndef _NESO_RNG_TOOLKIT_CREATE_RNG_HPP_
 #define _NESO_RNG_TOOLKIT_CREATE_RNG_HPP_
 
-#include "rng.hpp"
 #include "platforms/stdlib.hpp"
+#include "rng.hpp"
 
 namespace NESO::RNGToolkit {
 
@@ -21,29 +21,25 @@ std::string get_default_platform();
  * @param platform_name Name of preferred RNG platform, default="default".
  * @returns RNG instance. nullptr on Error.
  */
-template<typename VALUE_TYPE, typename DISTRIBUTION_TYPE>
-[[nodiscard]] RNGSharedPtr<VALUE_TYPE>  create_rng(
-  DISTRIBUTION_TYPE distribution,
-  std::uint64_t seed,
-  sycl::device device,
-  std::size_t device_index,
-  std::string platform_name = "default"
-){
+template <typename VALUE_TYPE, typename DISTRIBUTION_TYPE>
+[[nodiscard]] RNGSharedPtr<VALUE_TYPE>
+create_rng(DISTRIBUTION_TYPE distribution, std::uint64_t seed,
+           sycl::device device, std::size_t device_index,
+           std::string platform_name = "default") {
   RNGSharedPtr<VALUE_TYPE> rng = nullptr;
 
-  if (platform_name == "default"){
+  if (platform_name == "default") {
     platform_name = get_default_platform();
   }
   platform_name = get_env_string("NESO_RNG_TOOLKIT", platform_name);
 
-  if (platform_name == "stdlib"){
+  if (platform_name == "stdlib") {
     return StdLibPlatform<VALUE_TYPE>{}.create_rng(distribution, seed, device,
                                                    device_index);
   }
 
   return nullptr;
 }
-
 
 } // namespace NESO::RNGToolkit
 

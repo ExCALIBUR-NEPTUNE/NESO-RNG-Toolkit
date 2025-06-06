@@ -1,9 +1,9 @@
 #ifndef _NESO_RNG_TOOLKIT_PLATFORM_HPP_
 #define _NESO_RNG_TOOLKIT_PLATFORM_HPP_
 
-#include "typedefs.hpp"
-#include "rng.hpp"
 #include "distribution.hpp"
+#include "rng.hpp"
+#include "typedefs.hpp"
 
 namespace NESO::RNGToolkit {
 
@@ -15,11 +15,11 @@ template <typename VALUE_TYPE> struct Platform {
   create_rng(Distribution::Uniform distribution, std::uint64_t seed,
              sycl::device device, std::size_t device_index) = 0;
 
-  virtual RNGSharedPtr<VALUE_TYPE>
-  create_rng(Distribution::Normal distribution, std::uint64_t seed,
-             sycl::device device, std::size_t device_index) = 0;
+  virtual RNGSharedPtr<VALUE_TYPE> create_rng(Distribution::Normal distribution,
+                                              std::uint64_t seed,
+                                              sycl::device device,
+                                              std::size_t device_index) = 0;
 };
-
 
 } // namespace NESO::RNGToolkit
 
