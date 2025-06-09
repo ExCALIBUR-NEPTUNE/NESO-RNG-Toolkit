@@ -32,6 +32,21 @@ template <typename VALUE_TYPE> inline void wrapper_uniform() {
   queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
 
   ASSERT_EQ(to_test, correct);
+
+  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N, 511) == SUCCESS);
+  queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
+
+  bool one_different = false;
+  for (std::size_t ix = 0; ix < N; ix++) {
+    if (correct.at(ix) != to_test.at(ix)) {
+      one_different = true;
+    }
+  }
+  ASSERT_TRUE(one_different);
+
+  std::generate(correct.begin(), correct.end(), [&]() { return dist(rng); });
+  ASSERT_EQ(to_test, correct);
+
   sycl::free(d_ptr, queue);
 }
 
@@ -62,6 +77,18 @@ template <typename VALUE_TYPE> inline void wrapper_normal() {
   std::vector<VALUE_TYPE> to_test(N);
   queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
 
+  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N, 511) == SUCCESS);
+  queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
+
+  bool one_different = false;
+  for (std::size_t ix = 0; ix < N; ix++) {
+    if (correct.at(ix) != to_test.at(ix)) {
+      one_different = true;
+    }
+  }
+  ASSERT_TRUE(one_different);
+
+  std::generate(correct.begin(), correct.end(), [&]() { return dist(rng); });
   ASSERT_EQ(to_test, correct);
   sycl::free(d_ptr, queue);
 }

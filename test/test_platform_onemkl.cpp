@@ -20,19 +20,37 @@ template <typename VALUE_TYPE> inline void wrapper_uniform() {
   auto to_test_rng =
       create_rng<VALUE_TYPE>(Distribution::Uniform<VALUE_TYPE>{a, b}, seed,
                              device, 0, "oneMKL", "default_engine");
-
-  // Generate host side values to test against
-  // TODO
-
   VALUE_TYPE *d_ptr =
       static_cast<VALUE_TYPE *>(sycl::malloc_device(num_bytes, queue));
-  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N, 511) == SUCCESS);
-  std::vector<VALUE_TYPE> to_test(N);
-  queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
 
-  for (auto ix : to_test) {
-    std::cout << ix << std::endl;
+  std::vector<VALUE_TYPE> correct(N);
+  std::vector<VALUE_TYPE> to_test(N);
+
+  oneapi::mkl::rng::default_engine engine(queue, seed);
+  oneapi::mkl::rng::uniform<VALUE_TYPE> distr(a, b);
+
+  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N, 511) == SUCCESS);
+  queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
+  queue.fill(d_ptr, 0.0, N).wait_and_throw();
+  oneapi::mkl::rng::generate(distr, engine, N, d_ptr).wait_and_throw();
+  queue.memcpy(correct.data(), d_ptr, num_bytes).wait_and_throw();
+  ASSERT_EQ(correct, to_test);
+
+  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N, 511) == SUCCESS);
+  queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
+  queue.fill(d_ptr, 0.0, N).wait_and_throw();
+
+  bool one_different = false;
+  for (std::size_t ix = 0; ix < N; ix++) {
+    if (correct.at(ix) != to_test.at(ix)) {
+      one_different = true;
+    }
   }
+  ASSERT_TRUE(one_different);
+
+  oneapi::mkl::rng::generate(distr, engine, N, d_ptr).wait_and_throw();
+  queue.memcpy(correct.data(), d_ptr, num_bytes).wait_and_throw();
+  ASSERT_EQ(correct, to_test);
 
   sycl::free(d_ptr, queue);
 }

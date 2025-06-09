@@ -14,11 +14,15 @@ namespace NESO::RNGToolkit {
 
 #ifdef NESO_RNG_TOOLKIT_ONEMKL
 
-template <typename VALUE_TYPE> struct oneMKLRNG : RNG<VALUE_TYPE> {
+template <typename VALUE_TYPE, typename RNG_TYPE, typename DIST_TYPE>
+struct oneMKLRNG : RNG<VALUE_TYPE> {
   virtual ~oneMKLRNG() = default;
 
+  sycl::queue queue;
+  RNG_TYPE rng;
+  DIST_TYPE dist;
+
   sycl::event event;
-  std::function<sycl::event(VALUE_TYPE *, const std::size_t)> submit_function;
 
   virtual int wait_get_samples([[maybe_unused]] VALUE_TYPE *d_ptr) override {
     this->event.wait_and_throw();
@@ -28,13 +32,14 @@ template <typename VALUE_TYPE> struct oneMKLRNG : RNG<VALUE_TYPE> {
   virtual int
   submit_get_samples(VALUE_TYPE *d_ptr, const std::size_t num_samples,
                      [[maybe_unused]] const std::size_t block_size) override {
-    this->event = this->submit_function(d_ptr, num_samples);
+
+    this->event = oneapi::mkl::rng::generate(dist, rng, num_samples, d_ptr);
+
     return SUCCESS;
   }
 
-  oneMKLRNG(std::function<sycl::event(VALUE_TYPE *, const std::size_t)>
-                submit_function)
-      : event(sycl::event{}), submit_function(submit_function) {
+  oneMKLRNG(sycl::queue queue, RNG_TYPE rng, DIST_TYPE dist)
+      : queue(queue), rng(rng), dist(dist) {
     this->platform_name = "oneMKL";
   }
 };
@@ -57,21 +62,14 @@ struct OneMKLPlatform : public Platform<VALUE_TYPE> {
     generator_name = this->get_generator_name(generator_name, "default_engine");
     if (this->check_generator_name(generator_name, this->generators)) {
       sycl::queue queue(device);
-      std::function<sycl::event(VALUE_TYPE *, const std::size_t)>
-          submit_function =
-              [=](VALUE_TYPE *d_ptr, std::size_t num_samples) -> sycl::event {
-        oneapi::mkl::rng::default_engine engine(queue, seed);
-        // TODO CHECK LIMITS
-        oneapi::mkl::rng::uniform<VALUE_TYPE> distr(distribution.a,
-                                                    distribution.b);
-        auto event =
-            oneapi::mkl::rng::generate(distr, engine, num_samples, d_ptr);
-        return event;
-      };
+      auto engine = oneapi::mkl::rng::default_engine{queue, seed};
+      auto dist =
+          oneapi::mkl::rng::uniform<VALUE_TYPE>(distribution.a, distribution.b);
 
       return std::dynamic_pointer_cast<RNG<VALUE_TYPE>>(
-          std::make_shared<oneMKLRNG<VALUE_TYPE>>(submit_function));
-
+          std::make_shared<
+              oneMKLRNG<VALUE_TYPE, decltype(engine), decltype(dist)>>(
+              queue, engine, dist));
     } else {
       return nullptr;
     }
@@ -82,16 +80,20 @@ struct OneMKLPlatform : public Platform<VALUE_TYPE> {
              std::uint64_t seed, sycl::device device,
              [[maybe_unused]] std::size_t device_index,
              std::string generator_name) override {
-    sycl::queue queue(device);
+    generator_name = this->get_generator_name(generator_name, "default_engine");
+    if (this->check_generator_name(generator_name, this->generators)) {
+      sycl::queue queue(device);
+      auto engine = oneapi::mkl::rng::default_engine(queue, seed);
+      auto dist = oneapi::mkl::rng::gaussian<VALUE_TYPE>(distribution.mean,
+                                                         distribution.stddev);
 
-    std::function<sycl::event(VALUE_TYPE *, const std::size_t)>
-        submit_function =
-            [=](VALUE_TYPE *d_ptr, std::size_t num_samples) -> sycl::event {
-      return sycl::event{};
-    };
-
-    return std::dynamic_pointer_cast<RNG<VALUE_TYPE>>(
-        std::make_shared<oneMKLRNG<VALUE_TYPE>>(submit_function));
+      return std::dynamic_pointer_cast<RNG<VALUE_TYPE>>(
+          std::make_shared<
+              oneMKLRNG<VALUE_TYPE, decltype(engine), decltype(dist)>>(
+              queue, engine, dist));
+    } else {
+      return nullptr;
+    }
   }
 };
 
