@@ -17,7 +17,7 @@ endif()
 
 set(TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(TEST_SRCS ${TEST_DIR}/test_utility.cpp ${TEST_DIR}/test_platform_stdlib.cpp
-              ${TEST_DIR}/test_platform_onedpl.cpp)
+              ${TEST_DIR}/test_platform_onemkl.cpp)
 
 # Check that the files added above are not missing any files in the test
 # directory.

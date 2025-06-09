@@ -1,4 +1,4 @@
-#ifdef NESO_RNG_TOOLKIT_ONEDPL
+#ifdef NESO_RNG_TOOLKIT_ONEMKL
 #include <gtest/gtest.h>
 #include <neso_rng_toolkit.hpp>
 
@@ -17,8 +17,9 @@ template <typename VALUE_TYPE> inline void wrapper_uniform() {
   const VALUE_TYPE a = -2.0;
   const VALUE_TYPE b = 2.0;
 
-  auto to_test_rng = create_rng<VALUE_TYPE>(
-      Distribution::Uniform<VALUE_TYPE>{a, b}, seed, device, 0, "oneDPL", "default_engine");
+  auto to_test_rng =
+      create_rng<VALUE_TYPE>(Distribution::Uniform<VALUE_TYPE>{a, b}, seed,
+                             device, 0, "oneMKL", "default_engine");
 
   // Generate host side values to test against
   // TODO
@@ -29,15 +30,15 @@ template <typename VALUE_TYPE> inline void wrapper_uniform() {
   std::vector<VALUE_TYPE> to_test(N);
   queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
 
-  for(auto ix : to_test){
+  for (auto ix : to_test) {
     std::cout << ix << std::endl;
   }
 
   sycl::free(d_ptr, queue);
 }
 
-}
+} // namespace
 
-TEST(PlatformOneDPL, uniform_double) { wrapper_uniform<double>(); }
+TEST(PlatformOneMKL, uniform_double) { wrapper_uniform<double>(); }
 
 #endif

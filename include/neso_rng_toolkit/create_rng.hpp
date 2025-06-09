@@ -1,7 +1,7 @@
 #ifndef _NESO_RNG_TOOLKIT_CREATE_RNG_HPP_
 #define _NESO_RNG_TOOLKIT_CREATE_RNG_HPP_
 
-#include "platforms/onedpl.hpp"
+#include "platforms/onemkl.hpp"
 #include "platforms/stdlib.hpp"
 #include "rng.hpp"
 
@@ -58,8 +58,8 @@ create_rng(DISTRIBUTION_TYPE distribution, std::uint64_t seed,
                                                   device_index, generator_name);
   }
 
-  if (platform_name == "oneDPL") {
-    rng = OneDPLPlatform<VALUE_TYPE>{}.create_rng(distribution, seed, device,
+  if (platform_name == "oneMKL") {
+    rng = OneMKLPlatform<VALUE_TYPE>{}.create_rng(distribution, seed, device,
                                                   device_index, generator_name);
   }
 
