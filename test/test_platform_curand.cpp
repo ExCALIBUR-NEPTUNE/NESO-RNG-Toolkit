@@ -26,7 +26,7 @@ template <typename VALUE_TYPE> inline void wrapper_uniform() {
   std::vector<VALUE_TYPE> correct(N);
   std::vector<VALUE_TYPE> to_test(N);
 
-  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N, 511) == SUCCESS);
+  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N) == SUCCESS);
   queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
   queue.fill(d_ptr, 0.0, N).wait_and_throw();
 

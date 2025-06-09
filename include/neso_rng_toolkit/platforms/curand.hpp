@@ -69,9 +69,8 @@ template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
     }
   }
 
-  virtual int
-  submit_get_samples(VALUE_TYPE *d_ptr, const std::size_t num_samples,
-                     [[maybe_unused]] const std::size_t block_size) override {
+  virtual int submit_get_samples(VALUE_TYPE *d_ptr,
+                                 const std::size_t num_samples) override {
     if (!this->rng_good) {
       return -2;
     }

@@ -23,13 +23,10 @@ template <typename VALUE_TYPE> struct RNG {
    *
    * @param[in, out] d_ptr Device pointer to fill with num_samples samples.
    * @param[in] num_samples Number of samples to place in device buffer.
-   * @param[in] block_size Specify a desired block size to draw samples in (may
-   * not be used).
    * @returns Error code to be tested against SUCCESS.
    */
   virtual int submit_get_samples(VALUE_TYPE *d_ptr,
-                                 const std::size_t num_samples,
-                                 const std::size_t block_size) = 0;
+                                 const std::size_t num_samples) = 0;
 
   /**
    * Start to draw random samples from the RNG. Internally this function calls
@@ -47,15 +44,11 @@ template <typename VALUE_TYPE> struct RNG {
    *
    * @param[in, out] d_ptr Device pointer to fill with num_samples samples.
    * @param[in] num_samples Number of samples to place in device buffer.
-   * @param[in] block_size Specify a desired block size to draw samples in (may
-   * not be used).
    * @returns Error code to be tested against SUCCESS.
    */
-  int get_samples(VALUE_TYPE *d_ptr, const std::size_t num_samples,
-                  const std::size_t block_size) {
+  int get_samples(VALUE_TYPE *d_ptr, const std::size_t num_samples) {
     int err = SUCCESS;
-    if ((err = this->submit_get_samples(d_ptr, num_samples, block_size)) !=
-        SUCCESS) {
+    if ((err = this->submit_get_samples(d_ptr, num_samples)) != SUCCESS) {
       return err;
     }
     return this->wait_get_samples(d_ptr);

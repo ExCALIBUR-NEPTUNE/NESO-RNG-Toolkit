@@ -20,10 +20,10 @@ struct StdLibRNG : public RNG<VALUE_TYPE> {
   }
 
   virtual int submit_get_samples(VALUE_TYPE *d_ptr,
-                                 const std::size_t num_samples,
-                                 const std::size_t block_size) override {
+                                 const std::size_t num_samples) override {
 
     auto d_ptr_start = d_ptr;
+    constexpr std::size_t block_size = 1024;
 
     // Create the random number in blocks and copy to device blockwise.
     std::vector<VALUE_TYPE> block0(block_size);

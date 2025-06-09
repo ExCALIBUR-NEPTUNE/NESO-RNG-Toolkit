@@ -29,9 +29,8 @@ struct oneMKLRNG : RNG<VALUE_TYPE> {
     return SUCCESS;
   }
 
-  virtual int
-  submit_get_samples(VALUE_TYPE *d_ptr, const std::size_t num_samples,
-                     [[maybe_unused]] const std::size_t block_size) override {
+  virtual int submit_get_samples(VALUE_TYPE *d_ptr,
+                                 const std::size_t num_samples) override {
 
     this->event = oneapi::mkl::rng::generate(dist, rng, num_samples, d_ptr);
 

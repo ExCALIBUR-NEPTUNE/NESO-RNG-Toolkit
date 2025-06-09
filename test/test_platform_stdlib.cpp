@@ -27,13 +27,13 @@ template <typename VALUE_TYPE> inline void wrapper_uniform() {
 
   VALUE_TYPE *d_ptr =
       static_cast<VALUE_TYPE *>(sycl::malloc_device(num_bytes, queue));
-  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N, 511) == SUCCESS);
+  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N) == SUCCESS);
   std::vector<VALUE_TYPE> to_test(N);
   queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
 
   ASSERT_EQ(to_test, correct);
 
-  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N, 511) == SUCCESS);
+  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N) == SUCCESS);
   queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
 
   bool one_different = false;
@@ -73,11 +73,11 @@ template <typename VALUE_TYPE> inline void wrapper_normal() {
 
   VALUE_TYPE *d_ptr =
       static_cast<VALUE_TYPE *>(sycl::malloc_device(num_bytes, queue));
-  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N, 511) == SUCCESS);
+  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N) == SUCCESS);
   std::vector<VALUE_TYPE> to_test(N);
   queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
 
-  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N, 511) == SUCCESS);
+  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N) == SUCCESS);
   queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
 
   bool one_different = false;

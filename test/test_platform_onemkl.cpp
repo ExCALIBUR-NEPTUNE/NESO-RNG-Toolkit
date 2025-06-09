@@ -29,14 +29,14 @@ template <typename VALUE_TYPE> inline void wrapper_uniform() {
   oneapi::mkl::rng::default_engine engine(queue, seed);
   oneapi::mkl::rng::uniform<VALUE_TYPE> distr(a, b);
 
-  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N, 511) == SUCCESS);
+  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N) == SUCCESS);
   queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
   queue.fill(d_ptr, 0.0, N).wait_and_throw();
   oneapi::mkl::rng::generate(distr, engine, N, d_ptr).wait_and_throw();
   queue.memcpy(correct.data(), d_ptr, num_bytes).wait_and_throw();
   ASSERT_EQ(correct, to_test);
 
-  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N, 511) == SUCCESS);
+  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N) == SUCCESS);
   queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
   queue.fill(d_ptr, 0.0, N).wait_and_throw();
 
@@ -78,14 +78,14 @@ template <typename VALUE_TYPE> inline void wrapper_normal() {
   oneapi::mkl::rng::default_engine engine(queue, seed);
   oneapi::mkl::rng::gaussian<VALUE_TYPE> distr(mean, stddev);
 
-  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N, 511) == SUCCESS);
+  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N) == SUCCESS);
   queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
   queue.fill(d_ptr, 0.0, N).wait_and_throw();
   oneapi::mkl::rng::generate(distr, engine, N, d_ptr).wait_and_throw();
   queue.memcpy(correct.data(), d_ptr, num_bytes).wait_and_throw();
   ASSERT_EQ(correct, to_test);
 
-  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N, 511) == SUCCESS);
+  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N) == SUCCESS);
   queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
   queue.fill(d_ptr, 0.0, N).wait_and_throw();
 
