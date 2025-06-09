@@ -61,6 +61,13 @@ add_library(NESO-RNG-Toolkit::NESO-RNG-Toolkit ALIAS NESO-RNG-Toolkit)
 # Set standard
 set_property(TARGET NESO-RNG-Toolkit PROPERTY CXX_STANDARD 17)
 
+
+find_package(MKL REQUIRED)
+target_compile_definitions(NESO-RNG-Toolkit PUBLIC NESO_RNG_TOOLKIT_ONEMKL)
+target_link_libraries(NESO-RNG-Toolkit PUBLIC MKL::MKL_DPCPP)
+message(STATUS "Imported oneMKL targets: ${MKL_IMPORTED_TARGETS}")
+
+
 # Does oneDPL exist and enabled?
 if(NESO_RNG_TOOLKIT_REQUIRE_ONEDPL)
   find_package(oneDPL REQUIRED)

@@ -6,7 +6,7 @@ namespace NESO::RNGToolkit {
 
 std::string get_default_platform() {
 #ifdef NESO_RNG_TOOLKIT_ONEDPL
-  return "onedpl";
+  return "oneDPL";
 #else
   return "stdlib";
 #endif

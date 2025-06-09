@@ -95,10 +95,9 @@ struct StdLibPlatform : public Platform<VALUE_TYPE> {
              std::uint64_t seed, sycl::device device,
              [[maybe_unused]] std::size_t device_index,
              std::string generator_name) override {
-
     generator_name = this->get_generator_name(generator_name, "mt19937_64");
-    sycl::queue queue(device);
     if (this->check_generator_name(generator_name, this->generators)) {
+      sycl::queue queue(device);
       return std::dynamic_pointer_cast<RNG<VALUE_TYPE>>(
           std::make_shared<
               StdLibRNG<VALUE_TYPE, std::mt19937_64,
@@ -116,10 +115,9 @@ struct StdLibPlatform : public Platform<VALUE_TYPE> {
              std::uint64_t seed, sycl::device device,
              [[maybe_unused]] std::size_t device_index,
              std::string generator_name) override {
-
     generator_name = this->get_generator_name(generator_name, "mt19937_64");
-    sycl::queue queue(device);
     if (this->check_generator_name(generator_name, this->generators)) {
+      sycl::queue queue(device);
       return std::dynamic_pointer_cast<RNG<VALUE_TYPE>>(
           std::make_shared<StdLibRNG<VALUE_TYPE, std::mt19937_64,
                                      std::normal_distribution<VALUE_TYPE>>>(

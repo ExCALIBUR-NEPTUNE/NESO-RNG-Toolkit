@@ -58,7 +58,7 @@ create_rng(DISTRIBUTION_TYPE distribution, std::uint64_t seed,
                                                   device_index, generator_name);
   }
 
-  if (platform_name == "onedpl") {
+  if (platform_name == "oneDPL") {
     rng = OneDPLPlatform<VALUE_TYPE>{}.create_rng(distribution, seed, device,
                                                   device_index, generator_name);
   }
