@@ -15,6 +15,8 @@ option(
   ON)
 option(NESO_RNG_TOOLKIT_ENABLE_ONEMKL "Enable using oneMKL if found." ON)
 option(NESO_RNG_TOOLKIT_REQUIRE_ONEMKL "Force using oneMKL." OFF)
+option(NESO_RNG_TOOLKIT_ENABLE_CURAND "Enable using curand if found." ON)
+option(NESO_RNG_TOOLKIT_REQUIRE_CURAND "Force using curand." OFF)
 option(NESO_RNG_TOOLKIT_ENABLE_TESTS "Build unit tests for this project." ON)
 
 # This means that when the tests and lib are installed they have rpath set for
@@ -43,6 +45,7 @@ set(HEADER_FILES
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/platform.hpp
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/platforms/stdlib.hpp
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/platforms/onemkl.hpp
+    ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/platforms/curand.hpp
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/distribution.hpp
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/rng.hpp
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/typedefs.hpp)
@@ -75,6 +78,40 @@ if(MKL_FOUND)
   target_link_libraries(NESO-RNG-Toolkit PUBLIC MKL::MKL_DPCPP)
 else()
   message(STATUS "MKL NOT Found")
+endif()
+
+if(NESO_RNG_TOOLKIT_REQUIRE_CURAND)
+  find_package(CUDAToolkit REQUIRED)
+elseif(NESO_RNG_TOOLKIT_ENABLE_CURAND)
+  find_package(CUDAToolkit QUIET)
+endif()
+
+if(CUDAToolkit_FOUND)
+  message(STATUS "CUDA Tookit Found")
+  if(TARGET CUDA::curand)
+    message(STATUS "CUDA::curand Found")
+
+    set(ORIG_CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
+    set(CMAKE_REQUIRED_LIBRARIES CUDA::cudart CUDA::curand)
+    check_cxx_source_compiles(
+      "
+        #include <cuda_runtime.h>
+        #include <curand.h>
+        int main(int argc, char ** argv) {return 0;}
+        "
+      COMPILES_CURAND)
+    set(CMAKE_REQUIRED_LIBRARIES ${ORIG_CMAKE_REQUIRED_LIBRARIES})
+
+    if(COMPILES_CURAND)
+      target_compile_definitions(NESO-RNG-Toolkit
+                                 PUBLIC NESO_RNG_TOOLKIT_CURAND)
+      target_link_libraries(NESO-RNG-Toolkit PUBLIC CUDA::cudart CUDA::curand)
+    endif()
+  else()
+    message(STATUS "CUDA::curand NOT Found")
+  endif()
+else()
+  message(STATUS "CUDA Tookit NOT Found")
 endif()
 
 # Makes it easy to install + adds the files to the INCLUDE property of the lib

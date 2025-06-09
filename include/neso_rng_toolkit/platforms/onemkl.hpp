@@ -2,9 +2,9 @@
 #define _NESO_RNG_TOOLKIT_PLATFORMS_ONEMKL_HPP_
 
 #include "../platform.hpp"
+#include "../platforms/stdlib.hpp"
 #include "../rng.hpp"
 #include "stdlib.hpp"
-#include <functional>
 
 #ifdef NESO_RNG_TOOLKIT_ONEMKL
 #include <oneapi/mkl.hpp>
@@ -98,6 +98,7 @@ struct OneMKLPlatform : public Platform<VALUE_TYPE> {
 };
 
 #else
+
 /**
  * If oneMKL is not found then we make the OneMKLPlatform a copy of the
  * StdLibPlatform.
