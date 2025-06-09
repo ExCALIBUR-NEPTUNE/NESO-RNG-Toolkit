@@ -1,12 +1,14 @@
 #ifndef _NESO_RNG_TOOLKIT_PLATFORMS_CURAND_HPP_
 #define _NESO_RNG_TOOLKIT_PLATFORMS_CURAND_HPP_
 
+#include "../distribution.hpp"
 #include "../platform.hpp"
 #include "../platforms/stdlib.hpp"
 #include "../rng.hpp"
 #include "stdlib.hpp"
 #include <functional>
 #include <iostream>
+#include <map>
 
 #ifdef NESO_RNG_TOOLKIT_CURAND
 #include <cuda_runtime.h>
@@ -39,7 +41,8 @@ template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
     check_error_code(curandDestroyGenerator(this->generator));
     check_error_code(cudaStreamDestroy(stream));
   }
-
+  sycl::device device;
+  sycl::queue queue;
   bool rng_good{true};
   cudaStream_t stream;
   std::size_t device_index;
@@ -49,11 +52,17 @@ template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
   std::function<curandStatus_t(curandGenerator_t, VALUE_TYPE *, std::size_t)>
       dist;
 
+  std::function<void(sycl::queue, VALUE_TYPE *, std::size_t)> transform;
+
+  std::map<VALUE_TYPE *, std::size_t> map_ptr_num_samples;
+
   virtual int wait_get_samples([[maybe_unused]] VALUE_TYPE *d_ptr) override {
     if (!this->rng_good) {
       return -1;
     }
     if (check_error_code(cudaStreamSynchronize(this->stream))) {
+      this->transform(this->queue, d_ptr, this->map_ptr_num_samples.at(d_ptr));
+      this->map_ptr_num_samples.erase(d_ptr);
       return SUCCESS && this->rng_good;
     } else {
       return -1;
@@ -67,17 +76,22 @@ template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
       return -2;
     }
     if (check_error_code(this->dist(this->generator, d_ptr, num_samples))) {
+      this->map_ptr_num_samples[d_ptr] = num_samples;
       return SUCCESS && this->rng_good;
     } else {
       return -1;
     }
   }
 
-  CurandRNG(std::size_t device_index, curandRngType_t rng, std::uint64_t seed,
-            std::function<curandStatus_t(curandGenerator_t, VALUE_TYPE *,
-                                         std::size_t)>
-                dist)
-      : device_index(device_index), rng(rng), dist(dist) {
+  CurandRNG(
+      sycl::device device, std::size_t device_index, curandRngType_t rng,
+      std::uint64_t seed,
+      std::function<curandStatus_t(curandGenerator_t, VALUE_TYPE *,
+                                   std::size_t)>
+          dist,
+      std::function<void(sycl::queue, VALUE_TYPE *, std::size_t)> transform)
+      : device(device), queue(device), device_index(device_index), rng(rng),
+        dist(dist), transform(transform) {
     this->platform_name = "curand";
 
     this->rng_good =
@@ -131,14 +145,14 @@ get_curand_uniform_dist(float) {
 template <typename VALUE_TYPE>
 struct CurandPlatform : public Platform<VALUE_TYPE> {
 
-  const static inline std::set<std::string> generators = {"default"};
+  static const inline std::set<std::string> generators = {"default"};
 
   virtual ~CurandPlatform() = default;
 
   virtual RNGSharedPtr<VALUE_TYPE>
   create_rng([[maybe_unused]] Distribution::Uniform<VALUE_TYPE> distribution,
-             std::uint64_t seed, [[maybe_unused]] sycl::device device,
-             std::size_t device_index, std::string generator_name) override {
+             std::uint64_t seed, sycl::device device, std::size_t device_index,
+             std::string generator_name) override {
     generator_name = this->get_generator_name(generator_name, "default");
     if (this->check_generator_name(generator_name, this->generators)) {
 
@@ -146,9 +160,47 @@ struct CurandPlatform : public Platform<VALUE_TYPE> {
                                    std::size_t)>
           dist = get_curand_uniform_dist(static_cast<VALUE_TYPE>(0.0));
 
+      /**
+       * Our interface follows the C++ standard and defines the interval as
+       * [a,b). Curand samples values in (0,1]. Hence we transform the output to
+       * be in [a,b).
+       */
+
+      sycl::queue queue{device};
+      std::function<void(sycl::queue, VALUE_TYPE *, std::size_t)> transform =
+          [=](sycl::queue queue, VALUE_TYPE *d_ptr, std::size_t num_samples) {
+            const VALUE_TYPE k_max_allowed_value =
+                Distribution::previous_value(distribution.b);
+            const VALUE_TYPE k_a = distribution.a;
+            const VALUE_TYPE k_b = distribution.b;
+            const VALUE_TYPE k_width = k_b - k_a;
+            queue
+                .parallel_for(sycl::range<1>(num_samples),
+                              [=](auto idx) {
+                                const VALUE_TYPE original = d_ptr[idx];
+                                // Transform the interval from (0, 1] to [0, 1).
+                                const VALUE_TYPE swapped_interval =
+                                    1.0 - original;
+                                // Transform to [a, b);
+                                VALUE_TYPE transform_interval =
+                                    swapped_interval * k_width + k_a;
+                                // Ensure after all that we are actually in [a,
+                                // b)
+                                transform_interval = (transform_interval < k_a)
+                                                         ? k_a
+                                                         : transform_interval;
+                                transform_interval = (transform_interval >= k_b)
+                                                         ? k_max_allowed_value
+                                                         : transform_interval;
+                                d_ptr[idx] = transform_interval;
+                              })
+                .wait_and_throw();
+          };
+
       return std::dynamic_pointer_cast<RNG<VALUE_TYPE>>(
-          std::make_shared<CurandRNG<VALUE_TYPE>>(
-              device_index, CURAND_RNG_PSEUDO_DEFAULT, seed, dist));
+          std::make_shared<CurandRNG<VALUE_TYPE>>(device, device_index,
+                                                  CURAND_RNG_PSEUDO_DEFAULT,
+                                                  seed, dist, transform));
       ;
     } else {
       return nullptr;

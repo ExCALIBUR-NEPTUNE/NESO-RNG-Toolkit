@@ -11,7 +11,7 @@ template <typename VALUE_TYPE> inline void wrapper_uniform() {
   sycl::queue queue{device};
 
   const std::uint64_t seed = 1234;
-  const std::size_t N = 8;
+  const std::size_t N = 10230;
   const std::size_t num_bytes = N * sizeof(VALUE_TYPE);
 
   const VALUE_TYPE a = -2.0;
@@ -29,10 +29,6 @@ template <typename VALUE_TYPE> inline void wrapper_uniform() {
   ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N, 511) == SUCCESS);
   queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
   queue.fill(d_ptr, 0.0, N).wait_and_throw();
-
-  for (std::size_t ix = 0; ix < N; ix++) {
-    std::cout << ix << " " << to_test.at(ix) << std::endl;
-  }
 
   sycl::free(d_ptr, queue);
 }

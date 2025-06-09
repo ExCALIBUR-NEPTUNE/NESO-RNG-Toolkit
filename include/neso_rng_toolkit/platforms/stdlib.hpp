@@ -86,7 +86,7 @@ struct StdLibRNG : public RNG<VALUE_TYPE> {
 template <typename VALUE_TYPE>
 struct StdLibPlatform : public Platform<VALUE_TYPE> {
 
-  const static inline std::set<std::string> generators = {"mt19937_64"};
+  static const inline std::set<std::string> generators = {"mt19937_64"};
 
   virtual ~StdLibPlatform() = default;
 
