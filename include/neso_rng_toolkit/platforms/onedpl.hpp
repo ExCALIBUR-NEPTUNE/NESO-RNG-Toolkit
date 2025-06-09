@@ -12,6 +12,7 @@
 namespace NESO::RNGToolkit {
 
 #ifdef NESO_RNG_TOOLKIT_ONEDPL
+
 /**
  * This is the main interface to the oneDPL random implementations.
  */
@@ -20,9 +21,10 @@ struct OneDPLPlatform : public Platform<VALUE_TYPE> {
   virtual ~OneDPLPlatform() = default;
 
   virtual RNGSharedPtr<VALUE_TYPE>
-  create_rng([[maybe_unused]] Distribution::Uniform distribution,
+  create_rng([[maybe_unused]] Distribution::Uniform<VALUE_TYPE> distribution,
              std::uint64_t seed, sycl::device device,
-             [[maybe_unused]] std::size_t device_index) override {
+             [[maybe_unused]] std::size_t device_index,
+             [[maybe_unused]] std::string generator_name) override {
     sycl::queue queue(device);
     return std::dynamic_pointer_cast<RNG<VALUE_TYPE>>(
         std::make_shared<StdLibRNG<VALUE_TYPE, std::mt19937_64,
@@ -31,9 +33,10 @@ struct OneDPLPlatform : public Platform<VALUE_TYPE> {
   }
 
   virtual RNGSharedPtr<VALUE_TYPE>
-  create_rng([[maybe_unused]] Distribution::Normal distribution,
+  create_rng([[maybe_unused]] Distribution::Normal<VALUE_TYPE> distribution,
              std::uint64_t seed, sycl::device device,
-             [[maybe_unused]] std::size_t device_index) override {
+             [[maybe_unused]] std::size_t device_index,
+             [[maybe_unused]] std::string generator_name) override {
     sycl::queue queue(device);
     return std::dynamic_pointer_cast<RNG<VALUE_TYPE>>(
         std::make_shared<StdLibRNG<VALUE_TYPE, std::mt19937_64,
@@ -41,6 +44,7 @@ struct OneDPLPlatform : public Platform<VALUE_TYPE> {
             queue, seed, std::normal_distribution<VALUE_TYPE>(0.0, 1.0)));
   }
 };
+
 #else
 /**
  * If oneDPL is not found then we make the OneDPLPlatform a copy of the

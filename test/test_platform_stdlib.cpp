@@ -13,12 +13,15 @@ template <typename VALUE_TYPE> inline void wrapper_uniform() {
   const std::size_t N = 1023;
   const std::size_t num_bytes = N * sizeof(VALUE_TYPE);
 
-  auto to_test_rng = create_rng<VALUE_TYPE>(Distribution::Uniform{}, seed,
-                                            device, 0, "stdlib");
+  const VALUE_TYPE a = -2.0;
+  const VALUE_TYPE b = 2.0;
+
+  auto to_test_rng = create_rng<VALUE_TYPE>(
+      Distribution::Uniform<VALUE_TYPE>{a, b}, seed, device, 0, "stdlib");
 
   // Generate host side values to test against
   auto rng = std::mt19937_64{seed};
-  auto dist = std::uniform_real_distribution<VALUE_TYPE>(0.0, 1.0);
+  auto dist = std::uniform_real_distribution<VALUE_TYPE>(a, b);
   std::vector<VALUE_TYPE> correct(N);
   std::generate(correct.begin(), correct.end(), [&]() { return dist(rng); });
 
@@ -40,12 +43,16 @@ template <typename VALUE_TYPE> inline void wrapper_normal() {
   const std::size_t N = 1023;
   const std::size_t num_bytes = N * sizeof(VALUE_TYPE);
 
+  const VALUE_TYPE mean = 3.0;
+  const VALUE_TYPE stddev = 2.0;
+
   auto to_test_rng =
-      create_rng<VALUE_TYPE>(Distribution::Normal{}, seed, device, 0, "stdlib");
+      create_rng<VALUE_TYPE>(Distribution::Normal<VALUE_TYPE>{mean, stddev},
+                             seed, device, 0, "stdlib");
 
   // Generate host side values to test against
   auto rng = std::mt19937_64{seed};
-  auto dist = std::normal_distribution<VALUE_TYPE>(0.0, 1.0);
+  auto dist = std::normal_distribution<VALUE_TYPE>(mean, stddev);
   std::vector<VALUE_TYPE> correct(N);
   std::generate(correct.begin(), correct.end(), [&]() { return dist(rng); });
 

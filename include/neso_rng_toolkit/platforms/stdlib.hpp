@@ -86,46 +86,49 @@ struct StdLibRNG : public RNG<VALUE_TYPE> {
 template <typename VALUE_TYPE>
 struct StdLibPlatform : public Platform<VALUE_TYPE> {
 
+  const static inline std::set<std::string> generators = {"mt19937_64"};
+
   virtual ~StdLibPlatform() = default;
 
-  /*
-   * Create an RNG instance.
-   *
-   * @param distribution Distribution RNG samples should be from.
-   * @param seed Value to seed RNG with.
-   * @param device SYCL Device samples are to be created on.
-   * @param device_index Index of SYCL device on the SYCL platform.
-   * @returns RNG instance. nullptr on Error.
-   */
   virtual RNGSharedPtr<VALUE_TYPE>
-  create_rng([[maybe_unused]] Distribution::Uniform distribution,
+  create_rng([[maybe_unused]] Distribution::Uniform<VALUE_TYPE> distribution,
              std::uint64_t seed, sycl::device device,
-             [[maybe_unused]] std::size_t device_index) override {
+             [[maybe_unused]] std::size_t device_index,
+             std::string generator_name) override {
+
+    generator_name = this->get_generator_name(generator_name, "mt19937_64");
     sycl::queue queue(device);
-    return std::dynamic_pointer_cast<RNG<VALUE_TYPE>>(
-        std::make_shared<StdLibRNG<VALUE_TYPE, std::mt19937_64,
-                                   std::uniform_real_distribution<VALUE_TYPE>>>(
-            queue, seed, std::uniform_real_distribution<VALUE_TYPE>(0.0, 1.0)));
+    if (this->check_generator_name(generator_name, this->generators)) {
+      return std::dynamic_pointer_cast<RNG<VALUE_TYPE>>(
+          std::make_shared<
+              StdLibRNG<VALUE_TYPE, std::mt19937_64,
+                        std::uniform_real_distribution<VALUE_TYPE>>>(
+              queue, seed,
+              std::uniform_real_distribution<VALUE_TYPE>(distribution.a,
+                                                         distribution.b)));
+    } else {
+      return nullptr;
+    }
   }
 
-  /*
-   * Create an RNG instance.
-   *
-   * @param distribution Distribution RNG samples should be from.
-   * @param seed Value to seed RNG with.
-   * @param device SYCL Device samples are to be created on.
-   * @param device_index Index of SYCL device on the SYCL platform.
-   * @returns RNG instance. nullptr on Error.
-   */
   virtual RNGSharedPtr<VALUE_TYPE>
-  create_rng([[maybe_unused]] Distribution::Normal distribution,
+  create_rng([[maybe_unused]] Distribution::Normal<VALUE_TYPE> distribution,
              std::uint64_t seed, sycl::device device,
-             [[maybe_unused]] std::size_t device_index) override {
+             [[maybe_unused]] std::size_t device_index,
+             std::string generator_name) override {
+
+    generator_name = this->get_generator_name(generator_name, "mt19937_64");
     sycl::queue queue(device);
-    return std::dynamic_pointer_cast<RNG<VALUE_TYPE>>(
-        std::make_shared<StdLibRNG<VALUE_TYPE, std::mt19937_64,
-                                   std::normal_distribution<VALUE_TYPE>>>(
-            queue, seed, std::normal_distribution<VALUE_TYPE>(0.0, 1.0)));
+    if (this->check_generator_name(generator_name, this->generators)) {
+      return std::dynamic_pointer_cast<RNG<VALUE_TYPE>>(
+          std::make_shared<StdLibRNG<VALUE_TYPE, std::mt19937_64,
+                                     std::normal_distribution<VALUE_TYPE>>>(
+              queue, seed,
+              std::normal_distribution<VALUE_TYPE>(distribution.mean,
+                                                   distribution.stddev)));
+    } else {
+      return nullptr;
+    }
   }
 };
 

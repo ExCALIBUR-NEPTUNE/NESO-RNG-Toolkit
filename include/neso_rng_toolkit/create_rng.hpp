@@ -32,13 +32,16 @@ std::uint64_t create_seeds(std::size_t size, std::size_t rank,
  * @param device SYCL Device samples are to be created on.
  * @param device_index Index of SYCL device on the SYCL platform.
  * @param platform_name Name of preferred RNG platform, default="default".
+ * @param generator_name Name of preferred RNG generator method,
+ * default="default".
  * @returns RNG instance. nullptr on Error.
  */
 template <typename VALUE_TYPE, typename DISTRIBUTION_TYPE>
 [[nodiscard]] RNGSharedPtr<VALUE_TYPE>
 create_rng(DISTRIBUTION_TYPE distribution, std::uint64_t seed,
            sycl::device device, std::size_t device_index,
-           std::string platform_name = "default") {
+           std::string platform_name = "default",
+           std::string generator_name = "default") {
   RNGSharedPtr<VALUE_TYPE> rng = nullptr;
 
   if (platform_name == "default") {
@@ -47,14 +50,17 @@ create_rng(DISTRIBUTION_TYPE distribution, std::uint64_t seed,
   platform_name =
       Private::get_env_string("NESO_RNG_TOOLKIT_PLATFORM", platform_name);
 
+  generator_name =
+      Private::get_env_string("NESO_RNG_TOOLKIT_GENERATOR", generator_name);
+
   if (platform_name == "stdlib") {
     rng = StdLibPlatform<VALUE_TYPE>{}.create_rng(distribution, seed, device,
-                                                  device_index);
+                                                  device_index, generator_name);
   }
 
   if (platform_name == "onedpl") {
     rng = OneDPLPlatform<VALUE_TYPE>{}.create_rng(distribution, seed, device,
-                                                  device_index);
+                                                  device_index, generator_name);
   }
 
   if (rng == nullptr) {
