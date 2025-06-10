@@ -8,7 +8,13 @@ std::string get_default_platform() {
 #ifdef NESO_RNG_TOOLKIT_ONEDPL
   return "oneDPL";
 #else
+
+#ifdef NESO_RNG_TOOLKIT_CURAND
+  return "curand";
+#else
   return "stdlib";
+#endif
+
 #endif
 }
 
@@ -29,5 +35,15 @@ std::uint64_t create_seeds(std::size_t size, std::size_t rank,
 
   return seed_out;
 }
+
+template RNGSharedPtr<double>
+create_rng(Distribution::Uniform<double> distribution, std::uint64_t seed,
+           sycl::device device, std::size_t device_index,
+           std::string platform_name, std::string generator_name);
+
+template RNGSharedPtr<double>
+create_rng(Distribution::Normal<double> distribution, std::uint64_t seed,
+           sycl::device device, std::size_t device_index,
+           std::string platform_name, std::string generator_name);
 
 } // namespace NESO::RNGToolkit

@@ -9,6 +9,7 @@
 #include <functional>
 #include <iostream>
 #include <map>
+#include <sycl/sycl.hpp>
 
 #ifdef NESO_RNG_TOOLKIT_CURAND
 #include <cuda_runtime.h>
@@ -35,11 +36,20 @@ inline bool check_error_code(cudaError_t err) {
   return true;
 }
 
+/**
+ * Try to determine if the SYCL device is actually a cuda device.
+ *
+ * @param device SYCL device.
+ * @param device_index Device index in host sycl platform.
+ * @returns True if this function determines that the device is a CUDA device.
+ */
+bool is_cuda_device(sycl::device device, const std::size_t device_index);
+
 template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
 
   virtual ~CurandRNG() {
     check_error_code(curandDestroyGenerator(this->generator));
-    check_error_code(cudaStreamDestroy(stream));
+    check_error_code(cudaStreamDestroy(this->stream));
   }
   sycl::device device;
   sycl::queue queue;
@@ -113,15 +123,6 @@ template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
   }
 };
 
-template <typename VALUE_TYPE>
-inline std::function<curandStatus_t(curandGenerator_t, VALUE_TYPE *,
-                                    std::size_t)>
-get_curand_uniform_dist(VALUE_TYPE &) {
-  return [=](curandGenerator_t, VALUE_TYPE *, std::size_t) -> curandStatus_t {
-    return CURAND_STATUS_TYPE_ERROR;
-  };
-}
-
 inline std::function<curandStatus_t(curandGenerator_t, double *, std::size_t)>
 get_curand_uniform_dist(double) {
   return [=](curandGenerator_t generator, double *d_ptr,
@@ -135,6 +136,23 @@ get_curand_uniform_dist(float) {
   return [=](curandGenerator_t generator, float *d_ptr,
              std::size_t num_samples) -> curandStatus_t {
     return curandGenerateUniform(generator, d_ptr, num_samples);
+  };
+}
+
+inline std::function<curandStatus_t(curandGenerator_t, double *, std::size_t)>
+get_curand_normal_dist(const double mean, const double stddev) {
+  return [=](curandGenerator_t generator, double *d_ptr,
+             std::size_t num_samples) -> curandStatus_t {
+    return curandGenerateNormalDouble(generator, d_ptr, num_samples, mean,
+                                      stddev);
+  };
+}
+
+inline std::function<curandStatus_t(curandGenerator_t, float *, std::size_t)>
+get_curand_normal_dist(const float mean, const float stddev) {
+  return [=](curandGenerator_t generator, float *d_ptr,
+             std::size_t num_samples) -> curandStatus_t {
+    return curandGenerateNormal(generator, d_ptr, num_samples, mean, stddev);
   };
 }
 
@@ -212,14 +230,37 @@ struct CurandPlatform : public Platform<VALUE_TYPE> {
              std::size_t device_index, std::string generator_name) override {
     generator_name = this->get_generator_name(generator_name, "default");
     if (this->check_generator_name(generator_name, this->generators)) {
-      return nullptr;
+
+      std::function<curandStatus_t(curandGenerator_t, VALUE_TYPE *,
+                                   std::size_t)>
+          dist = get_curand_normal_dist(distribution.mean, distribution.stddev);
+
+      // No transform is needed for curand Normal distribution.
+      sycl::queue queue{device};
+      std::function<void(sycl::queue, VALUE_TYPE *, std::size_t)> transform =
+          [=]([[maybe_unused]] sycl::queue queue,
+              [[maybe_unused]] VALUE_TYPE *d_ptr,
+              [[maybe_unused]] std::size_t num_samples) {};
+
+      return std::dynamic_pointer_cast<RNG<VALUE_TYPE>>(
+          std::make_shared<CurandRNG<VALUE_TYPE>>(device, device_index,
+                                                  CURAND_RNG_PSEUDO_DEFAULT,
+                                                  seed, dist, transform));
+      ;
     } else {
       return nullptr;
     }
   }
 };
 
+extern template struct CurandRNG<double>;
+extern template struct CurandPlatform<double>;
+// TODO example interface to NP
+// TODO docs
+
 #else
+
+inline bool is_cuda_device(sycl::device, const std::size_t) { return false; }
 
 /**
  * If curand is not found then we make the CurandPlatform a copy of the

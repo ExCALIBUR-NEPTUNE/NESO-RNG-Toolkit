@@ -65,8 +65,13 @@ create_rng(DISTRIBUTION_TYPE distribution, std::uint64_t seed,
   }
 
   if (platform_name == "curand") {
-    rng = CurandPlatform<VALUE_TYPE>{}.create_rng(distribution, seed, device,
-                                                  device_index, generator_name);
+    if (is_cuda_device(device, device_index)) {
+      rng = CurandPlatform<VALUE_TYPE>{}.create_rng(
+          distribution, seed, device, device_index, generator_name);
+    } else {
+      rng = StdLibPlatform<VALUE_TYPE>{}.create_rng(
+          distribution, seed, device, device_index, generator_name);
+    }
   }
 
   if (rng == nullptr) {
@@ -78,6 +83,16 @@ create_rng(DISTRIBUTION_TYPE distribution, std::uint64_t seed,
 
   return rng;
 }
+
+extern template RNGSharedPtr<double>
+create_rng(Distribution::Uniform<double> distribution, std::uint64_t seed,
+           sycl::device device, std::size_t device_index,
+           std::string platform_name, std::string generator_name);
+
+extern template RNGSharedPtr<double>
+create_rng(Distribution::Normal<double> distribution, std::uint64_t seed,
+           sycl::device device, std::size_t device_index,
+           std::string platform_name, std::string generator_name);
 
 } // namespace NESO::RNGToolkit
 
