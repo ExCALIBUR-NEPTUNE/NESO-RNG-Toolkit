@@ -10,6 +10,14 @@ These are the currently supported platforms:
 | `curand`      | CUDA provided RNG samples via cuRAND. |
 | `oneMKL`      | Intel SYCL provided RNG samples via oneMKL. |
 
+## Requirements
+
+* SYCL 2020 implementation. e.g. oneAPI or AdaptiveCpp.
+* (Optional) oneMKL.
+* (Optional) cuRAND.
+
+## CMake
+
 The standard library RNG implementations, platform `stdlib`, are always made available. 
 Vendor specific implementations are searched for at CMake time and are enabled if they are available.
 The following table lists the options which can be passed to CMake to configure searching for vendor provided RNG implementations.
@@ -21,6 +29,14 @@ The following table lists the options which can be passed to CMake to configure 
 | `NESO_RNG_TOOLKIT_ENABLE_CURAND` | `ON` | Search for cuRAND in a non-fatal manner if it is not found. |
 | `NESO_RNG_TOOLKIT_REQUIRE_CURAND` | `OFF` | Search for cuRAND in a fatal manner if it is not found. |
 
+
+Downstream projects which use NESO-RNG-Toolkit should write CMake implementation that looks like the following example. 
+Please see the examples directory for a NESO-Particles example.
+```
+find_package(NESO-RNG-Toolkit REQUIRED)
+target_link_libraries(${EXECUTABLE} PUBLIC NESO-RNG-Toolkit::NESO-RNG-Toolkit)
+add_sycl_to_target(TARGET ${EXECUTABLE} SOURCES ${EXECUTABLE_SOURCE})
+```
 
 ## Distributions
 Currently we support the following distributions for RNG samples. 
