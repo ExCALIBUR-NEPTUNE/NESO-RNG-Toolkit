@@ -255,8 +255,6 @@ struct CurandPlatform : public Platform<VALUE_TYPE> {
 
 extern template struct CurandRNG<double>;
 extern template struct CurandPlatform<double>;
-// TODO example interface to NP
-// TODO docs
 
 #else
 
