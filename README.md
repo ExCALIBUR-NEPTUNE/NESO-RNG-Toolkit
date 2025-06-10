@@ -57,6 +57,107 @@ Sometimes it is desirable to alter the interval in which uniform samples exist i
 | (a, b)            | `Distribution::Uniform{Distribution::next_value(a), b}` |
 | (a, b]            | `Distribution::Uniform{Distribution::next_value(a), Distribution::next_value(b)}` |
 
+## Interface
+
+The main interface for this library is the `RNG` type which is described as follows.
+```cpp
+/**
+ * This is the main interface for the library.
+ */
+template <typename VALUE_TYPE> struct RNG {
+
+  /// The SYCL device this RNG is created on.
+  sycl::device device;
+  /// The index in the platform of the device.
+  std::size_t device_index;
+  /// The name of the platform.
+  std::string platform_name{"undefined"};
+
+  /**
+   * Start to draw random samples from the RNG. Internally this function calls
+   * submit_get_samples and wait_get_samples.
+   *
+   * @param[in, out] d_ptr Device pointer to fill with num_samples samples.
+   * @param[in] num_samples Number of samples to place in device buffer.
+   * @returns Error code to be tested against SUCCESS.
+   */
+  virtual int submit_get_samples(VALUE_TYPE *d_ptr,
+                                 const std::size_t num_samples) = 0;
+
+  /**
+   * Start to draw random samples from the RNG. Internally this function calls
+   * submit_get_samples and wait_get_samples.
+   *
+   * @param[in, out] d_ptr Device pointer to which is currently being populated
+   * with samples.
+   * @returns Error code to be tested against SUCCESS.
+   */
+  virtual int wait_get_samples(VALUE_TYPE *d_ptr) = 0;
+
+  /**
+   * Draw random samples from the RNG. Internally this function calls
+   * submit_get_samples and wait_get_samples.
+   *
+   * @param[in, out] d_ptr Device pointer to fill with num_samples samples.
+   * @param[in] num_samples Number of samples to place in device buffer.
+   * @returns Error code to be tested against SUCCESS.
+   */
+  int get_samples(VALUE_TYPE *d_ptr, const std::size_t num_samples);
+};
+```
+
+To create instances of this type users should call the function `create_rng` which has the following interface:
+```cpp
+/**
+ * This is the function users could call to create a RNG instance.
+ *
+ * @param distribution Distribution RNG samples should be from.
+ * @param seed Value to seed RNG with.
+ * @param device SYCL Device samples are to be created on.
+ * @param device_index Index of SYCL device on the SYCL platform.
+ * @param platform_name Name of preferred RNG platform, default="default".
+ * @param generator_name Name of preferred RNG generator method,
+ * default="default".
+ * @returns RNG instance. nullptr on Error.
+ */
+template <typename VALUE_TYPE, typename DISTRIBUTION_TYPE>
+[[nodiscard]] RNGSharedPtr<VALUE_TYPE>
+create_rng(DISTRIBUTION_TYPE distribution, std::uint64_t seed,
+           sycl::device device, std::size_t device_index,
+           std::string platform_name = "default",
+           std::string generator_name = "default")
+```
+
+For example to create a Uniform distribution in the interval [a,b) or a Normal distribution with mean "mean" and standard deviation "sdtdev" users should call `create_rng` as follows:
+```cpp
+
+auto rng_uniform = NESO::RNGToolkit::create_rng<double>(
+    NESO::RNGToolkit::Distribution::Uniform<REAL>{a, b}, 
+    seed,
+    device, 
+    device_index
+);
+
+auto rng_normal = NESO::RNGToolkit::create_rng<double>(
+    NESO::RNGToolkit::Distribution::Normal<REAL>{mean, stddev}, 
+    seed,
+    device, 
+    device_index
+);
+
+```
+
+In these code listings `device` is a `sycl::device` instance. 
+`device_index` is the index of the SYCL device in the SYCL platform. 
+`seed` is the RNG seed which the RNG generator will be initialised with. 
+
+To facilitate the creation of unique seeds across multiple processes, e.g. MPI ranks, we provide the helper function `create_seeds` which can be called as follows:
+
+```cpp
+// Create a seed on each MPI rank.
+std::uint64_t root_seed = 12341351;
+std::uint64_t seed = NESO::RNGToolkit::create_seeds(size, rank, root_seed);
+```
 
 ## Runtime Configuration
 
