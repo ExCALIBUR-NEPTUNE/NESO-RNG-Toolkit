@@ -42,5 +42,23 @@ Sometimes it is desirable to alter the interval in which uniform samples exist i
 | (a, b]            | `Distribution::Uniform{Distribution::next_value(a), Distribution::next_value(b)}` |
 
 
+## Runtime Configuration
+
+Users can configure which RNG platform and vendor specific RNG implementation is called at runtime through environment variables. 
+We implement an interface to a restricted set of the RNG implementations provided by each vendor.
+If you would like the interface to allow use of a particular RNG implementation please raise an issue.
+
+| Variable Name | Description |
+| ------------- | ----------- |
+| `NESO_RNG_TOOLKIT_PLATFORM` | Explicitly specify which platform should provide the random samples. The acceptable values are the platform names in the first table. |
+| `NESO_RNG_TOOLKIT_GENERATOR` | Explicitly specify which RNG generator provided by the vendor should be used. See the table below for acceptable values. |
+| `NESO_RNG_TOOLKIT_PLATFORM_VERBOSE` | Print to stdout information on which RNG implementation is in use at runtime. |
+
+
+| Platform Name | Implemented Generators |
+| ------------- | ---------------------- |
+| `stdlib`      | `mt19937_64`           |
+| `oneMKL`      | `default_engine`       |
+| `curand`      | `default` (alias for `CURAND_RNG_PSEUDO_DEFAULT`) |
 
 
