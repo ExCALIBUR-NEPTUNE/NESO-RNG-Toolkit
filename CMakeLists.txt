@@ -74,10 +74,12 @@ elseif(NESO_RNG_TOOLKIT_ENABLE_ONEMKL)
   find_package(MKL CONFIG QUIET PATHS $ENV{MKLROOT})
 endif()
 
+set(NESO_RNG_TOOLKIT_USING_MKL FALSE)
 if(MKL_FOUND)
   message(STATUS "MKL Found")
   target_compile_definitions(NESO-RNG-Toolkit PUBLIC NESO_RNG_TOOLKIT_ONEMKL)
   target_link_libraries(NESO-RNG-Toolkit PUBLIC MKL::MKL_DPCPP)
+  set(NESO_RNG_TOOLKIT_USING_MKL TRUE)
 else()
   message(STATUS "MKL NOT Found")
 endif()
@@ -88,6 +90,7 @@ elseif(NESO_RNG_TOOLKIT_ENABLE_CURAND)
   find_package(CUDAToolkit QUIET)
 endif()
 
+set(NESO_RNG_TOOLKIT_USING_CURAND FALSE)
 if(CUDAToolkit_FOUND)
   message(STATUS "CUDA Tookit Found")
   if(TARGET CUDA::curand)
@@ -107,7 +110,11 @@ if(CUDAToolkit_FOUND)
     if(COMPILES_CURAND)
       target_compile_definitions(NESO-RNG-Toolkit
                                  PUBLIC NESO_RNG_TOOLKIT_CURAND)
-      target_link_libraries(NESO-RNG-Toolkit PUBLIC CUDA::cudart CUDA::curand)
+      target_link_libraries(
+        NESO-RNG-Toolkit
+        PUBLIC CUDA::cudart
+        PUBLIC CUDA::curand)
+      set(NESO_RNG_TOOLKIT_USING_CURAND TRUE)
     endif()
   else()
     message(STATUS "CUDA::curand NOT Found")
