@@ -5,7 +5,8 @@ As part of these loop abstractions users may want random numbers on a per partic
 NP provides a KernelRNG interface between the source of random numbers and the looping operations.
 This example demonstrates how to use this interface with the RNG that NESO-RNG-Toolkit provides.
 
-In this example we set particle velocities using samples from a Normal distribution with mean 4.0 and standard deviation 2.0.
+In this example we set particle velocities using samples from a Normal distribution with mean 4.0 and standard deviation 2.0. 
+This example requires NESO-Particles `f1b986853e4b721625545a0e84cb94de90fd5a84` or newer.
 
 ```cpp
 // Create a seed on each MPI rank.
@@ -26,7 +27,7 @@ auto rng_interface =
 
 // This is the object which can be passed to ParticleLoops and produces ndim
 // samples per particle.
-auto kernel_rng = host_atomic_block_kernel_rng<REAL>(rng_interface, ndim);
+auto kernel_rng = host_per_particle_block_rng<REAL>(rng_interface, ndim);
 
 // Now use the rng in a kernel
 particle_loop(

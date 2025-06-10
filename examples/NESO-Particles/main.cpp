@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
 
   // This is the object which can be passed to ParticleLoops and produces ndim
   // samples per particle.
-  auto kernel_rng = host_atomic_block_kernel_rng<REAL>(rng_interface, ndim);
+  auto kernel_rng = host_per_particle_block_rng<REAL>(rng_interface, ndim);
 
   // Now use the rng in a kernel
   particle_loop(
