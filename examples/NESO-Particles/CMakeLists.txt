@@ -15,11 +15,6 @@ find_package(NESO-RNG-Toolkit REQUIRED)
 # put all targets in bin
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
 
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "RelWithDebInfo")
-  message(STATUS "Set CMAKE_BUILD_TYPE=RelWithDebInfo")
-endif()
-
 set(EXECUTABLE np-example)
 set(EXECUTABLE_SOURCE main.cpp)
 

@@ -6,7 +6,7 @@ using namespace NESO::Particles;
 int main(int argc, char **argv) {
   initialise_mpi(&argc, &argv);
 
-  const int npart_per_cell = 40;
+  const int npart_per_cell = 200;
 
   // Extent of each coarse cell in each dimension.
   const double cell_extent = 1.0;
@@ -136,6 +136,7 @@ int main(int argc, char **argv) {
   const REAL stddev = std::sqrt(variance);
 
   if (rank == 0) {
+    sycl_target->print_device_info();
     nprint("mean:", mean, "stddev:", stddev);
   }
 

@@ -108,5 +108,18 @@ template <typename VALUE_TYPE> inline void wrapper_normal() {
 
 TEST(PlatformOneMKL, uniform_double) { wrapper_uniform<double>(); }
 TEST(PlatformOneMKL, normal_double) { wrapper_normal<double>(); }
+TEST(PlatformOneMKL, default) {
+  sycl::device device{sycl::default_selector_v};
+  sycl::queue queue{device};
+
+  const std::uint64_t seed = 1234;
+  const double mean = 3.0;
+  const double stddev = 2.0;
+
+  auto to_test_rng = create_rng<double>(
+      Distribution::Normal<double>{mean, stddev}, seed, device, 0);
+
+  ASSERT_EQ(to_test_rng->platform_name, "oneMKL");
+}
 
 #endif
