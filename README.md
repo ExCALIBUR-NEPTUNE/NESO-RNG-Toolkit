@@ -74,8 +74,7 @@ template <typename VALUE_TYPE> struct RNG {
   std::string platform_name{"undefined"};
 
   /**
-   * Start to draw random samples from the RNG. Internally this function calls
-   * submit_get_samples and wait_get_samples.
+   * Start to draw random samples from the RNG.
    *
    * @param[in, out] d_ptr Device pointer to fill with num_samples samples.
    * @param[in] num_samples Number of samples to place in device buffer.
@@ -85,8 +84,7 @@ template <typename VALUE_TYPE> struct RNG {
                                  const std::size_t num_samples) = 0;
 
   /**
-   * Start to draw random samples from the RNG. Internally this function calls
-   * submit_get_samples and wait_get_samples.
+   * Wait for the random samples to be computed.
    *
    * @param[in, out] d_ptr Device pointer to which is currently being populated
    * with samples.
@@ -125,7 +123,7 @@ template <typename VALUE_TYPE, typename DISTRIBUTION_TYPE>
 create_rng(DISTRIBUTION_TYPE distribution, std::uint64_t seed,
            sycl::device device, std::size_t device_index,
            std::string platform_name = "default",
-           std::string generator_name = "default")
+           std::string generator_name = "default");
 ```
 
 For example to create a Uniform distribution in the interval [a,b) or a Normal distribution with mean "mean" and standard deviation "sdtdev" users should call `create_rng` as follows:

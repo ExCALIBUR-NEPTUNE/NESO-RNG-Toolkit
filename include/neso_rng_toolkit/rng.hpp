@@ -18,8 +18,7 @@ template <typename VALUE_TYPE> struct RNG {
   std::string platform_name{"undefined"};
 
   /**
-   * Start to draw random samples from the RNG. Internally this function calls
-   * submit_get_samples and wait_get_samples.
+   * Start to draw random samples from the RNG.
    *
    * @param[in, out] d_ptr Device pointer to fill with num_samples samples.
    * @param[in] num_samples Number of samples to place in device buffer.
@@ -29,8 +28,7 @@ template <typename VALUE_TYPE> struct RNG {
                                  const std::size_t num_samples) = 0;
 
   /**
-   * Start to draw random samples from the RNG. Internally this function calls
-   * submit_get_samples and wait_get_samples.
+   * Wait for the random samples to be computed.
    *
    * @param[in, out] d_ptr Device pointer to which is currently being populated
    * with samples.
