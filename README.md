@@ -22,3 +22,25 @@ The following table lists the options which can be passed to CMake to configure 
 | `NESO_RNG_TOOLKIT_REQUIRE_CURAND` | `OFF` | Search for cuRAND in a fatal manner if it is not found. |
 
 
+## Distributions
+Currently we support the following distributions for RNG samples. 
+These interfaces should follow the C++ standard for definitions.
+
+| Distribution Type | Description |
+| ----------------- | ----------- |
+| `Distribution::Uniform` | This describes a Uniform distribution over an interval [a, b). |
+| `Distribution::Normal` | This describes a Normal distribution with mean `mean` and standard deviation `stddev`. |
+
+
+Sometimes it is desirable to alter the interval in which uniform samples exist in to explicitly include or exclude the end points. We provide the functions `next_value` and `previous_value` to move the specification of the interval by one double precision value to include or exclude end points as needed.
+
+| Interval Required | Uniform Distribution Call |
+| ----------------- | ------------------------- |
+| [a, b)            | `Distribution::Uniform{a, b}` |
+| [a, b]            | `Distribution::Uniform{a, Distribution::next_value(b)}` |
+| (a, b)            | `Distribution::Uniform{Distribution::next_value(a), b}` |
+| (a, b]            | `Distribution::Uniform{Distribution::next_value(a), Distribution::next_value(b)}` |
+
+
+
+
