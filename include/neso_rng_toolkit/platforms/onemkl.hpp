@@ -96,6 +96,9 @@ struct OneMKLPlatform : public Platform<VALUE_TYPE> {
   }
 };
 
+extern template struct OneMKLPlatform<double>;
+extern template struct OneMKLPlatform<float>;
+
 #else
 
 /**

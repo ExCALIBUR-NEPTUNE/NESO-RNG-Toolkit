@@ -54,17 +54,17 @@ create_rng(DISTRIBUTION_TYPE distribution, std::uint64_t seed,
   generator_name =
       Private::get_env_string("NESO_RNG_TOOLKIT_GENERATOR", generator_name);
 
-  if (platform_name == "stdlib") {
+  if (platform_name == "stdlib" && rng == nullptr) {
     rng = StdLibPlatform<VALUE_TYPE>{}.create_rng(distribution, seed, device,
                                                   device_index, generator_name);
   }
 
-  if (platform_name == "oneMKL") {
+  if (platform_name == "oneMKL" && rng == nullptr) {
     rng = OneMKLPlatform<VALUE_TYPE>{}.create_rng(distribution, seed, device,
                                                   device_index, generator_name);
   }
 
-  if (platform_name == "curand") {
+  if (platform_name == "curand" && rng == nullptr) {
     if (is_cuda_device(device, device_index)) {
       rng = CurandPlatform<VALUE_TYPE>{}.create_rng(
           distribution, seed, device, device_index, generator_name);
