@@ -130,14 +130,14 @@ For example to create a Uniform distribution in the interval [a,b) or a Normal d
 ```cpp
 
 auto rng_uniform = NESO::RNGToolkit::create_rng<double>(
-    NESO::RNGToolkit::Distribution::Uniform<REAL>{a, b}, 
+    NESO::RNGToolkit::Distribution::Uniform<double>{a, b}, 
     seed,
     device, 
     device_index
 );
 
 auto rng_normal = NESO::RNGToolkit::create_rng<double>(
-    NESO::RNGToolkit::Distribution::Normal<REAL>{mean, stddev}, 
+    NESO::RNGToolkit::Distribution::Normal<double>{mean, stddev}, 
     seed,
     device, 
     device_index
