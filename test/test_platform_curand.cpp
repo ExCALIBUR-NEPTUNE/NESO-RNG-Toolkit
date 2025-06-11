@@ -179,6 +179,10 @@ template <typename VALUE_TYPE> inline void wrapper_normal() {
     ASSERT_TRUE(one_different);
 
     ASSERT_TRUE(check_error_code(curandDestroyGenerator(generator)));
+
+    // Check for zero samples
+    ASSERT_TRUE(to_test_rng->get_samples(d_ptr, 0) == SUCCESS);
+
     sycl::free(d_ptr, queue);
   }
 }

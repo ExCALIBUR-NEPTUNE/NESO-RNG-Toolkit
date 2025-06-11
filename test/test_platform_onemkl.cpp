@@ -52,6 +52,8 @@ template <typename VALUE_TYPE> inline void wrapper_uniform() {
   queue.memcpy(correct.data(), d_ptr, num_bytes).wait_and_throw();
   ASSERT_EQ(correct, to_test);
 
+  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, 0) == SUCCESS);
+
   sycl::free(d_ptr, queue);
 }
 

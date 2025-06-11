@@ -21,6 +21,9 @@ struct StdLibRNG : public RNG<VALUE_TYPE> {
 
   virtual int submit_get_samples(VALUE_TYPE *d_ptr,
                                  const std::size_t num_samples) override {
+    if (num_samples == 0) {
+      return SUCCESS;
+    }
 
     auto d_ptr_start = d_ptr;
     constexpr std::size_t block_size = 1024;

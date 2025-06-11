@@ -71,7 +71,10 @@ template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
       return -1;
     }
     if (check_error_code(cudaStreamSynchronize(this->stream))) {
-      this->transform(this->queue, d_ptr, this->map_ptr_num_samples.at(d_ptr));
+      const std::size_t num_samples = this->map_ptr_num_samples.at(d_ptr);
+      if (num_samples > 0) {
+        this->transform(this->queue, d_ptr, num_samples);
+      }
       this->map_ptr_num_samples.erase(d_ptr);
       return this->rng_good ? SUCCESS : -3;
     } else {
@@ -84,8 +87,13 @@ template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
     if (!this->rng_good) {
       return -2;
     }
+
+    this->map_ptr_num_samples[d_ptr] = num_samples;
+    if (num_samples == 0) {
+      return SUCCESS;
+    }
+
     if (check_error_code(this->dist(this->generator, d_ptr, num_samples))) {
-      this->map_ptr_num_samples[d_ptr] = num_samples;
       return this->rng_good ? SUCCESS : -3;
     } else {
       return -1;

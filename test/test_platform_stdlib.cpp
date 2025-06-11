@@ -47,6 +47,8 @@ template <typename VALUE_TYPE> inline void wrapper_uniform() {
   std::generate(correct.begin(), correct.end(), [&]() { return dist(rng); });
   ASSERT_EQ(to_test, correct);
 
+  ASSERT_TRUE(to_test_rng->get_samples(d_ptr, 0) == SUCCESS);
+
   sycl::free(d_ptr, queue);
 }
 
