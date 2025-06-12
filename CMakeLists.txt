@@ -54,7 +54,9 @@ set(HEADER_FILES
 
 # Check that the files added above are not missing any files in the include
 # directory.
-set(HEADER_FILES_IGNORE "")
+set(HEADER_FILES_IGNORE
+    ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/platforms/curand_impl.hpp
+    ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/platforms/onemkl_impl.hpp)
 check_added_file_list(${INCLUDE_DIR} hpp "${HEADER_FILES}"
                       "${HEADER_FILES_IGNORE}")
 
@@ -78,7 +80,7 @@ set(NESO_RNG_TOOLKIT_USING_MKL FALSE)
 if(MKL_FOUND)
   message(STATUS "MKL Found")
   target_compile_definitions(NESO-RNG-Toolkit PUBLIC NESO_RNG_TOOLKIT_ONEMKL)
-  target_link_libraries(NESO-RNG-Toolkit PUBLIC MKL::MKL_DPCPP)
+  target_link_libraries(NESO-RNG-Toolkit PRIVATE MKL::MKL_DPCPP)
   set(NESO_RNG_TOOLKIT_USING_MKL TRUE)
 else()
   message(STATUS "MKL NOT Found")
@@ -112,8 +114,8 @@ if(CUDAToolkit_FOUND)
                                  PUBLIC NESO_RNG_TOOLKIT_CURAND)
       target_link_libraries(
         NESO-RNG-Toolkit
-        PUBLIC CUDA::cudart
-        PUBLIC CUDA::curand)
+        PRIVATE CUDA::cudart
+        PRIVATE CUDA::curand)
       set(NESO_RNG_TOOLKIT_USING_CURAND TRUE)
     endif()
   else()

@@ -9,13 +9,3 @@ if (NOT COMMAND add_sycl_to_target)
         call find_package(<IntelSYCL|AdaptiveCPP|HipSYCL etc etc>) before
         including this module")
 endif()
-
-if (@NESO_RNG_TOOLKIT_USING_MKL@)
-  find_dependency(MKL)
-endif()
-
-if (@NESO_RNG_TOOLKIT_USING_CURAND@)
-  find_dependency(CUDAToolkit)
-endif()
-
-

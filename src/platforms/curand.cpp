@@ -1,6 +1,7 @@
 #ifdef NESO_RNG_TOOLKIT_CURAND
 
 #include <neso_rng_toolkit/platforms/curand.hpp>
+#include <neso_rng_toolkit/platforms/curand_impl.hpp>
 
 namespace NESO::RNGToolkit {
 
@@ -33,7 +34,7 @@ bool is_cuda_device(sycl::device device, const std::size_t device_index) {
   return is_cuda_device_flag;
 }
 
-template struct CurandRNG<double>;
 template struct CurandPlatform<double>;
+template struct CurandPlatform<float>;
 } // namespace NESO::RNGToolkit
 #endif

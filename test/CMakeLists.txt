@@ -40,6 +40,18 @@ foreach(TEST ${TEST_SRCS})
   set(TEST_SOURCES ${TEST_MAIN} ${TEST})
   add_executable(${TEST_NAME} ${TEST_SOURCES})
   target_link_libraries(${TEST_NAME} PRIVATE NESO-RNG-Toolkit GTest::gtest)
+
+  if(NESO_RNG_TOOLKIT_USING_MKL)
+    target_link_libraries(${TEST_NAME} PRIVATE MKL::MKL_DPCPP)
+  endif()
+
+  if(NESO_RNG_TOOLKIT_USING_CURAND)
+    target_link_libraries(
+      ${TEST_NAME}
+      PRIVATE CUDA::cudart
+      PRIVATE CUDA::curand)
+  endif()
+
   target_compile_definitions(${TEST_NAME}
                              PRIVATE NESO_RNG_TOOLKIT_TEST_COMPILATION)
   target_compile_definitions(
@@ -64,6 +76,17 @@ endforeach()
 add_executable(${EXECUTABLE} ${TEST_MAIN} ${TEST_LIST})
 
 target_link_libraries(${EXECUTABLE} PRIVATE NESO-RNG-Toolkit GTest::gtest)
+
+if(NESO_RNG_TOOLKIT_USING_MKL)
+  target_link_libraries(${EXECUTABLE} PRIVATE MKL::MKL_DPCPP)
+endif()
+if(NESO_RNG_TOOLKIT_USING_CURAND)
+  target_link_libraries(
+    ${EXECUTABLE}
+    PRIVATE CUDA::cudart
+    PRIVATE CUDA::curand)
+endif()
+
 target_compile_definitions(${EXECUTABLE}
                            PRIVATE NESO_RNG_TOOLKIT_TEST_COMPILATION)
 target_compile_definitions(${EXECUTABLE}

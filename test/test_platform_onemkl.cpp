@@ -1,6 +1,7 @@
 #ifdef NESO_RNG_TOOLKIT_ONEMKL
 #include <gtest/gtest.h>
 #include <neso_rng_toolkit.hpp>
+#include <neso_rng_toolkit/platforms/onemkl_impl.hpp>
 
 using namespace NESO::RNGToolkit;
 
