@@ -196,10 +196,12 @@ template <typename VALUE_TYPE> inline void wrapper_normal() {
 
             std::size_t N_remaining = N - offset_start - offset_end;
 
-            ASSERT_TRUE(check_error_code(curandGenerateNormalDouble(
-                generator, d0_aligned_ptr, N_remaining, mean, stddev)));
-            ASSERT_TRUE(
-                check_error_code(cudaStreamSynchronize(cast_rng->stream)));
+            if ((offset_start + offset_end) < N) {
+              ASSERT_TRUE(check_error_code(curandGenerateNormalDouble(
+                  generator, d0_aligned_ptr, N_remaining, mean, stddev)));
+              ASSERT_TRUE(
+                  check_error_code(cudaStreamSynchronize(cast_rng->stream)));
+            }
 
             if (offset_start) {
               queue
@@ -216,10 +218,12 @@ template <typename VALUE_TYPE> inline void wrapper_normal() {
                   .wait_and_throw();
             }
 
-            queue
-                .memcpy(d0_ptr + offset_start, d0_aligned_ptr,
-                        N_remaining * sizeof(VALUE_TYPE))
-                .wait_and_throw();
+            if ((offset_start + offset_end) < N) {
+              queue
+                  .memcpy(d0_ptr + offset_start, d0_aligned_ptr,
+                          N_remaining * sizeof(VALUE_TYPE))
+                  .wait_and_throw();
+            }
           }
         };
 
