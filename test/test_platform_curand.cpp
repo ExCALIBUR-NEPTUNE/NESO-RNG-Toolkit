@@ -119,77 +119,139 @@ template <typename VALUE_TYPE> inline void wrapper_normal() {
   sycl::device device{sycl::default_selector_v};
   if (device.is_gpu()) {
     sycl::queue queue{device};
-    for (std::size_t N : {0, 1, 2, 3, 127, 301, 10238, 10239}) {
+    for (std::size_t N : {1, 2, 3, 127, 301, 10238, 10239}) {
+      for (std::size_t alignment_offset : {0, 1}) {
 
-      const std::uint64_t seed = 1234;
-      const std::size_t num_bytes = N * sizeof(VALUE_TYPE);
+        const std::uint64_t seed = 1234;
+        const std::size_t num_bytes = N * sizeof(VALUE_TYPE);
 
-      const VALUE_TYPE mean = 2.0;
-      const VALUE_TYPE stddev = 4.0;
+        const VALUE_TYPE mean = 2.0;
+        const VALUE_TYPE stddev = 4.0;
 
-      auto to_test_rng =
-          create_rng<VALUE_TYPE>(Distribution::Normal<VALUE_TYPE>{mean, stddev},
-                                 seed, device, 0, "curand", "default");
+        auto to_test_rng = create_rng<VALUE_TYPE>(
+            Distribution::Normal<VALUE_TYPE>{mean, stddev}, seed, device, 0,
+            "curand", "default");
 
-      ASSERT_EQ(to_test_rng->platform_name, "curand");
-      VALUE_TYPE *d_ptr =
-          static_cast<VALUE_TYPE *>(sycl::malloc_device(num_bytes, queue));
+        ASSERT_EQ(to_test_rng->platform_name, "curand");
 
-      std::vector<VALUE_TYPE> correct(N);
-      std::vector<VALUE_TYPE> to_test(N);
+        VALUE_TYPE *d0_ptr =
+            static_cast<VALUE_TYPE *>(sycl::malloc_device(num_bytes, queue));
 
-      ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N) == SUCCESS);
-      queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
-      queue.fill(d_ptr, 0.0, N).wait_and_throw();
+        VALUE_TYPE *d0_aligned_ptr =
+            static_cast<VALUE_TYPE *>(sycl::malloc_device(num_bytes, queue));
 
-      std::shared_ptr<CurandRNG<VALUE_TYPE>> cast_rng =
-          std::dynamic_pointer_cast<CurandRNG<VALUE_TYPE>>(to_test_rng);
-      ASSERT_NE(cast_rng, nullptr);
+        VALUE_TYPE *d_orig_ptr = static_cast<VALUE_TYPE *>(sycl::malloc_device(
+            num_bytes + alignment_offset * sizeof(VALUE_TYPE), queue));
 
-      curandGenerator_t generator;
+        VALUE_TYPE *d1_ptr = d_orig_ptr + alignment_offset;
 
-      ASSERT_TRUE(
-          check_error_code(curandCreateGenerator(&generator, cast_rng->rng)));
-      ASSERT_TRUE(
-          check_error_code(curandSetStream(generator, cast_rng->stream)));
-      ASSERT_TRUE(check_error_code(
-          curandSetPseudoRandomGeneratorSeed(generator, seed)));
+        const std::size_t even_buffer_size =
+            CurandRNG<VALUE_TYPE>::even_buffer_size;
+        VALUE_TYPE *d_even_buffer = static_cast<VALUE_TYPE *>(
+            sycl::malloc_device(sizeof(VALUE_TYPE) * even_buffer_size, queue));
 
-      ASSERT_TRUE(check_error_code(
-          curandGenerateNormalDouble(generator, d_ptr, N, mean, stddev)));
-      ASSERT_TRUE(check_error_code(cudaStreamSynchronize(cast_rng->stream)));
+        std::vector<VALUE_TYPE> correct(N);
+        std::vector<VALUE_TYPE> to_test(N);
 
-      queue.memcpy(correct.data(), d_ptr, num_bytes).wait_and_throw();
-      queue.fill(d_ptr, 0.0, N).wait_and_throw();
-      ASSERT_EQ(correct, to_test);
+        ASSERT_TRUE(to_test_rng->get_samples(d1_ptr, N) == SUCCESS);
 
-      ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N) == SUCCESS);
-      queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
-      queue.fill(d_ptr, 0.0, N).wait_and_throw();
+        queue.memcpy(to_test.data(), d1_ptr, num_bytes).wait_and_throw();
+        queue.fill(d1_ptr, 0.0, N).wait_and_throw();
 
-      ASSERT_TRUE(check_error_code(
-          curandGenerateNormalDouble(generator, d_ptr, N, mean, stddev)));
-      ASSERT_TRUE(check_error_code(cudaStreamSynchronize(cast_rng->stream)));
+        std::shared_ptr<CurandRNG<VALUE_TYPE>> cast_rng =
+            std::dynamic_pointer_cast<CurandRNG<VALUE_TYPE>>(to_test_rng);
+        ASSERT_NE(cast_rng, nullptr);
 
-      std::vector<VALUE_TYPE> correct_prev = correct;
-      queue.memcpy(correct.data(), d_ptr, num_bytes).wait_and_throw();
-      queue.fill(d_ptr, 0.0, N).wait_and_throw();
-      ASSERT_EQ(correct, to_test);
+        curandGenerator_t generator;
 
-      bool one_different = N > 0 ? false : true;
-      for (std::size_t ix = 0; ix < N; ix++) {
-        if (correct.at(ix) != correct_prev.at(ix)) {
-          one_different = true;
+        ASSERT_TRUE(
+            check_error_code(curandCreateGenerator(&generator, cast_rng->rng)));
+        ASSERT_TRUE(
+            check_error_code(curandSetStream(generator, cast_rng->stream)));
+        ASSERT_TRUE(check_error_code(
+            curandSetPseudoRandomGeneratorSeed(generator, seed)));
+
+        auto lambda_get_sample = [&]() {
+          if ((N % 2 == 0) && (alignment_offset == 0)) {
+
+            ASSERT_TRUE(check_error_code(curandGenerateNormalDouble(
+                generator, d0_ptr, N, mean, stddev)));
+            ASSERT_TRUE(
+                check_error_code(cudaStreamSynchronize(cast_rng->stream)));
+          } else {
+
+            ASSERT_TRUE(check_error_code(curandGenerateNormalDouble(
+                generator, d_even_buffer, even_buffer_size, mean, stddev)));
+            ASSERT_TRUE(
+                check_error_code(cudaStreamSynchronize(cast_rng->stream)));
+
+            std::size_t offset_start = alignment_offset;
+            std::size_t offset_end = (N - offset_start) % 2 == 1 ? 1 : 0;
+
+            std::size_t N_remaining = N - offset_start - offset_end;
+
+            ASSERT_TRUE(check_error_code(curandGenerateNormalDouble(
+                generator, d0_aligned_ptr, N_remaining, mean, stddev)));
+            ASSERT_TRUE(
+                check_error_code(cudaStreamSynchronize(cast_rng->stream)));
+
+            if (offset_start) {
+              queue
+                  .memcpy(d0_ptr, d_even_buffer,
+                          offset_start * sizeof(VALUE_TYPE))
+                  .wait_and_throw();
+            }
+
+            if (offset_end) {
+              queue
+                  .memcpy(d0_ptr + N - offset_end,
+                          d_even_buffer + even_buffer_size - offset_end,
+                          offset_end * sizeof(VALUE_TYPE))
+                  .wait_and_throw();
+            }
+
+            queue
+                .memcpy(d0_ptr + offset_start, d0_aligned_ptr,
+                        N_remaining * sizeof(VALUE_TYPE))
+                .wait_and_throw();
+          }
+        };
+
+        lambda_get_sample();
+
+        queue.memcpy(correct.data(), d0_ptr, num_bytes).wait_and_throw();
+        queue.fill(d0_ptr, 0.0, N).wait_and_throw();
+        ASSERT_EQ(correct, to_test);
+
+        ASSERT_TRUE(to_test_rng->get_samples(d1_ptr, N) == SUCCESS);
+        queue.memcpy(to_test.data(), d1_ptr, num_bytes).wait_and_throw();
+        queue.fill(d1_ptr, 0.0, N).wait_and_throw();
+
+        lambda_get_sample();
+
+        std::vector<VALUE_TYPE> correct_prev = correct;
+        queue.memcpy(correct.data(), d0_ptr, num_bytes).wait_and_throw();
+        queue.fill(d0_ptr, 0.0, N).wait_and_throw();
+        ASSERT_EQ(correct, to_test);
+
+        bool one_different = N > 0 ? false : true;
+        for (std::size_t ix = 0; ix < N; ix++) {
+          if (correct.at(ix) != correct_prev.at(ix)) {
+            one_different = true;
+          }
         }
+        ASSERT_TRUE(one_different);
+
+        ASSERT_TRUE(check_error_code(curandDestroyGenerator(generator)));
+
+        // Check for zero samples
+        ASSERT_TRUE(to_test_rng->get_samples(d1_ptr, 0) == SUCCESS);
+
+        sycl::free(d0_ptr, queue);
+        sycl::free(d0_aligned_ptr, queue);
+        sycl::free(d_orig_ptr, queue);
+        sycl::free(d_even_buffer, queue);
       }
-      ASSERT_TRUE(one_different);
-
-      ASSERT_TRUE(check_error_code(curandDestroyGenerator(generator)));
-
-      // Check for zero samples
-      ASSERT_TRUE(to_test_rng->get_samples(d_ptr, 0) == SUCCESS);
-
-      sycl::free(d_ptr, queue);
     }
   }
 }
