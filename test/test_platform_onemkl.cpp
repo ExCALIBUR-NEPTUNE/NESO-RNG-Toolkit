@@ -34,7 +34,9 @@ template <typename VALUE_TYPE> inline void wrapper_uniform() {
     ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N) == SUCCESS);
     queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
     queue.fill(d_ptr, 0.0, N).wait_and_throw();
-    oneapi::mkl::rng::generate(distr, engine, N, d_ptr).wait_and_throw();
+    if (N > 0) {
+      oneapi::mkl::rng::generate(distr, engine, N, d_ptr).wait_and_throw();
+    }
     queue.memcpy(correct.data(), d_ptr, num_bytes).wait_and_throw();
     ASSERT_EQ(correct, to_test);
 
@@ -50,7 +52,9 @@ template <typename VALUE_TYPE> inline void wrapper_uniform() {
     }
     ASSERT_TRUE(one_different);
 
-    oneapi::mkl::rng::generate(distr, engine, N, d_ptr).wait_and_throw();
+    if (N > 0) {
+      oneapi::mkl::rng::generate(distr, engine, N, d_ptr).wait_and_throw();
+    }
     queue.memcpy(correct.data(), d_ptr, num_bytes).wait_and_throw();
     ASSERT_EQ(correct, to_test);
 
@@ -87,7 +91,9 @@ template <typename VALUE_TYPE> inline void wrapper_normal() {
     ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N) == SUCCESS);
     queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
     queue.fill(d_ptr, 0.0, N).wait_and_throw();
-    oneapi::mkl::rng::generate(distr, engine, N, d_ptr).wait_and_throw();
+    if (N > 0) {
+      oneapi::mkl::rng::generate(distr, engine, N, d_ptr).wait_and_throw();
+    }
     queue.memcpy(correct.data(), d_ptr, num_bytes).wait_and_throw();
     ASSERT_EQ(correct, to_test);
 
@@ -103,7 +109,9 @@ template <typename VALUE_TYPE> inline void wrapper_normal() {
     }
     ASSERT_TRUE(one_different);
 
-    oneapi::mkl::rng::generate(distr, engine, N, d_ptr).wait_and_throw();
+    if (N > 0) {
+      oneapi::mkl::rng::generate(distr, engine, N, d_ptr).wait_and_throw();
+    }
     queue.memcpy(correct.data(), d_ptr, num_bytes).wait_and_throw();
     ASSERT_EQ(correct, to_test);
 
