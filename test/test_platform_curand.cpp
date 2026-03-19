@@ -13,7 +13,8 @@ template <typename VALUE_TYPE> inline void wrapper_uniform() {
     sycl::queue queue{device};
 
     for (std::size_t N : {0, 1, 2, 3, 127, 301, 10238, 10239}) {
-      for (std::size_t alignment_offset : {0, 1}) {
+      for (std::size_t alignment_offset = 0; alignment_offset < 8;
+           alignment_offset++) {
 
         const std::uint64_t seed = 1234;
         const std::size_t num_bytes = N * sizeof(VALUE_TYPE);
@@ -27,7 +28,7 @@ template <typename VALUE_TYPE> inline void wrapper_uniform() {
 
         ASSERT_EQ(to_test_rng->platform_name, "curand");
         VALUE_TYPE *d_orig_ptr = static_cast<VALUE_TYPE *>(sycl::malloc_device(
-            num_bytes + alignment_offset + sizeof(VALUE_TYPE), queue));
+            num_bytes + alignment_offset * sizeof(VALUE_TYPE), queue));
 
         VALUE_TYPE *d_ptr = d_orig_ptr + alignment_offset;
 
@@ -126,7 +127,8 @@ template <typename VALUE_TYPE> inline void wrapper_normal() {
   if (device.is_gpu()) {
     sycl::queue queue{device};
     for (std::size_t N : {1, 2, 3, 127, 301, 10238, 10239}) {
-      for (std::size_t alignment_offset : {0, 1}) {
+      for (std::size_t alignment_offset = 0; alignment_offset < 8;
+           alignment_offset++) {
 
         const std::uint64_t seed = 1234;
         const std::size_t num_bytes = N * sizeof(VALUE_TYPE);
@@ -178,7 +180,8 @@ template <typename VALUE_TYPE> inline void wrapper_normal() {
             curandSetPseudoRandomGeneratorSeed(generator, seed)));
 
         auto lambda_get_sample = [&]() {
-          if ((N % 2 == 0) && (alignment_offset == 0)) {
+          std::size_t offset_start = alignment_offset % 2;
+          if ((N % 2 == 0) && (offset_start == 0)) {
 
             ASSERT_TRUE(check_error_code(curandGenerateNormalDouble(
                 generator, d0_ptr, N, mean, stddev)));
@@ -191,7 +194,6 @@ template <typename VALUE_TYPE> inline void wrapper_normal() {
             ASSERT_TRUE(
                 check_error_code(cudaStreamSynchronize(cast_rng->stream)));
 
-            std::size_t offset_start = alignment_offset;
             std::size_t offset_end = (N - offset_start) % 2 == 1 ? 1 : 0;
 
             std::size_t N_remaining = N - offset_start - offset_end;
