@@ -5,6 +5,7 @@
 #include "curand.hpp"
 #include <cuda_runtime.h>
 #include <curand.h>
+#include <type_traits>
 
 namespace NESO::RNGToolkit {
 
@@ -37,6 +38,9 @@ bool is_cuda_device(sycl::device device, const std::size_t device_index);
 template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
 
   virtual ~CurandRNG() {
+    if (this->d_even_buffer != nullptr) {
+      check_error_code(cudaFreeAsync(this->d_even_buffer, this->stream));
+    }
     check_error_code(curandDestroyGenerator(this->generator));
     check_error_code(cudaStreamDestroy(this->stream));
   }
@@ -52,6 +56,9 @@ template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
       dist;
 
   std::function<void(sycl::queue, VALUE_TYPE *, std::size_t)> transform;
+  bool requires_even_number_of_samples{false};
+  static const std::size_t even_buffer_size = 32;
+  VALUE_TYPE *d_even_buffer{nullptr};
 
   std::map<VALUE_TYPE *, std::size_t> map_ptr_num_samples;
 
@@ -73,6 +80,7 @@ template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
 
   virtual int submit_get_samples(VALUE_TYPE *d_ptr,
                                  const std::size_t num_samples) override {
+
     if (!this->rng_good) {
       return -2;
     }
@@ -82,10 +90,93 @@ template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
       return SUCCESS;
     }
 
-    if (check_error_code(this->dist(this->generator, d_ptr, num_samples))) {
-      return this->rng_good ? SUCCESS : -3;
+    // The cuRAND normal and lognormal (?) generators will error if the
+    // alignment of the output buffers is not twice the standard alignment.
+    const std::size_t offset_start =
+        this->requires_even_number_of_samples
+            ? (reinterpret_cast<std::uintptr_t>(d_ptr) %
+               (std::alignment_of_v<VALUE_TYPE> * 2)) /
+                  sizeof(VALUE_TYPE)
+            : 0;
+
+    // The cuRAND normal and lognormal generators will only sample an even
+    // number of values and the pointers have to aligned to two values.
+    std::size_t offset_end = 0;
+
+    if (this->requires_even_number_of_samples) {
+      // pointer is not aligned
+      if (offset_start) {
+        // offset for alignment by itself is not an even number of samples
+        if ((num_samples - offset_start) % 2 != 0) {
+          offset_end = 1;
+        }
+      } else {
+        // No pointer offset is needed but an offset for odd number of samples
+        // is need
+        if ((num_samples) % 2 != 0) {
+          offset_end = 1;
+        }
+      }
+    }
+
+    if (offset_end || offset_start) {
+      // First get an even number of samples into the buffer.
+      this->rng_good =
+          this->rng_good &&
+          check_error_code(this->dist(this->generator, this->d_even_buffer,
+                                      this->even_buffer_size));
+      this->rng_good = this->rng_good &&
+                       check_error_code(cudaStreamSynchronize(this->stream));
+
+      if (offset_start) {
+        this->rng_good =
+            this->rng_good &&
+            check_error_code(cudaMemcpyAsync(
+                d_ptr, this->d_even_buffer, offset_start * sizeof(VALUE_TYPE),
+                cudaMemcpyDeviceToDevice, this->stream));
+      }
+
+      if (offset_end && ((offset_start + offset_end) <= num_samples)) {
+        this->rng_good =
+            this->rng_good &&
+            check_error_code(cudaMemcpyAsync(
+                d_ptr + num_samples - offset_end,
+                this->d_even_buffer + this->even_buffer_size - offset_end,
+                offset_end * sizeof(VALUE_TYPE), cudaMemcpyDeviceToDevice,
+                this->stream));
+      }
+
+      this->rng_good = this->rng_good &&
+                       check_error_code(cudaStreamSynchronize(this->stream));
+    }
+
+    if (!this->rng_good) {
+      return -5;
+    }
+
+    // If we need any more samples
+    if ((offset_start + offset_end) < num_samples) {
+
+      const std::size_t num_samples_remaining =
+          num_samples - offset_start - offset_end;
+
+      if (this->requires_even_number_of_samples &&
+          ((num_samples_remaining) % 2 == 1)) {
+        std::cout
+            << "Even number of samples required but number of samples is: " +
+                   std::to_string(num_samples_remaining)
+            << std::endl;
+        return -6;
+      }
+
+      if (check_error_code(this->dist(this->generator, d_ptr + offset_start,
+                                      num_samples_remaining))) {
+        return this->rng_good ? SUCCESS : -3;
+      } else {
+        return -1;
+      }
     } else {
-      return -1;
+      return this->rng_good ? SUCCESS : -4;
     }
   }
 
@@ -95,9 +186,12 @@ template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
       std::function<curandStatus_t(curandGenerator_t, VALUE_TYPE *,
                                    std::size_t)>
           dist,
-      std::function<void(sycl::queue, VALUE_TYPE *, std::size_t)> transform)
+      std::function<void(sycl::queue, VALUE_TYPE *, std::size_t)> transform,
+      const bool requires_even_number_of_samples)
       : device(device), queue(device), device_index(device_index), rng(rng),
-        dist(dist), transform(transform) {
+        dist(dist), transform(transform),
+        requires_even_number_of_samples(requires_even_number_of_samples) {
+
     this->platform_name = "curand";
 
     this->rng_good =
@@ -117,6 +211,17 @@ template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
     this->rng_good =
         this->rng_good && check_error_code(curandSetPseudoRandomGeneratorSeed(
                               this->generator, seed));
+
+    if (this->requires_even_number_of_samples) {
+      this->rng_good =
+          this->rng_good &&
+          check_error_code(cudaMallocAsync(
+              &(this->d_even_buffer),
+              this->even_buffer_size * sizeof(VALUE_TYPE), this->stream));
+      this->rng_good = this->rng_good &&
+                       check_error_code(cudaStreamSynchronize(this->stream));
+      this->rng_good = this->rng_good && (this->d_even_buffer != nullptr);
+    }
   }
 };
 
@@ -204,7 +309,7 @@ RNGSharedPtr<VALUE_TYPE> CurandPlatform<VALUE_TYPE>::create_rng(
     return std::dynamic_pointer_cast<RNG<VALUE_TYPE>>(
         std::make_shared<CurandRNG<VALUE_TYPE>>(device, device_index,
                                                 CURAND_RNG_PSEUDO_DEFAULT, seed,
-                                                dist, transform));
+                                                dist, transform, false));
     ;
   } else {
     return nullptr;
@@ -232,7 +337,7 @@ RNGSharedPtr<VALUE_TYPE> CurandPlatform<VALUE_TYPE>::create_rng(
     return std::dynamic_pointer_cast<RNG<VALUE_TYPE>>(
         std::make_shared<CurandRNG<VALUE_TYPE>>(device, device_index,
                                                 CURAND_RNG_PSEUDO_DEFAULT, seed,
-                                                dist, transform));
+                                                dist, transform, true));
     ;
   } else {
     return nullptr;
