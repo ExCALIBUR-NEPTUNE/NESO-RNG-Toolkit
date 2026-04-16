@@ -36,9 +36,10 @@ template <typename VALUE_TYPE> inline void wrapper_uniform() {
         std::vector<VALUE_TYPE> to_test(N);
 
         ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N) == SUCCESS);
-        queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
-        queue.fill(d_ptr, 0.0, N).wait_and_throw();
-
+        if (N > 0) {
+          queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
+          queue.fill(d_ptr, 0.0, N).wait_and_throw();
+        }
         std::shared_ptr<CurandRNG<VALUE_TYPE>> cast_rng =
             std::dynamic_pointer_cast<CurandRNG<VALUE_TYPE>>(to_test_rng);
         ASSERT_NE(cast_rng, nullptr);
@@ -63,38 +64,44 @@ template <typename VALUE_TYPE> inline void wrapper_uniform() {
           const VALUE_TYPE k_max_allowed_value =
               Distribution::previous_value(b);
 
-          queue
-              .parallel_for(sycl::range<1>(N),
-                            [=](auto idx) {
-                              const VALUE_TYPE original = d_ptr[idx];
-                              // Transform the interval from (0, 1] to [0, 1).
-                              const VALUE_TYPE swapped_interval =
-                                  1.0 - original;
-                              // Transform to [a, b);
-                              VALUE_TYPE transform_interval =
-                                  swapped_interval * k_width + k_a;
-                              // Ensure after all that we are actually in [a,
-                              // b)
-                              transform_interval = (transform_interval < k_a)
-                                                       ? k_a
-                                                       : transform_interval;
-                              transform_interval = (transform_interval >= k_b)
-                                                       ? k_max_allowed_value
-                                                       : transform_interval;
-                              d_ptr[idx] = transform_interval;
-                            })
-              .wait_and_throw();
+          if (N > 0) {
+            queue
+                .parallel_for(sycl::range<1>(N),
+                              [=](auto idx) {
+                                const VALUE_TYPE original = d_ptr[idx];
+                                // Transform the interval from (0, 1] to [0, 1).
+                                const VALUE_TYPE swapped_interval =
+                                    1.0 - original;
+                                // Transform to [a, b);
+                                VALUE_TYPE transform_interval =
+                                    swapped_interval * k_width + k_a;
+                                // Ensure after all that we are actually in [a,
+                                // b)
+                                transform_interval = (transform_interval < k_a)
+                                                         ? k_a
+                                                         : transform_interval;
+                                transform_interval = (transform_interval >= k_b)
+                                                         ? k_max_allowed_value
+                                                         : transform_interval;
+                                d_ptr[idx] = transform_interval;
+                              })
+                .wait_and_throw();
+          }
         };
 
         lambda_transform();
 
-        queue.memcpy(correct.data(), d_ptr, num_bytes).wait_and_throw();
-        queue.fill(d_ptr, 0.0, N).wait_and_throw();
+        if (N > 0) {
+          queue.memcpy(correct.data(), d_ptr, num_bytes).wait_and_throw();
+          queue.fill(d_ptr, 0.0, N).wait_and_throw();
+        }
         ASSERT_EQ(correct, to_test);
 
         ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N) == SUCCESS);
-        queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
-        queue.fill(d_ptr, 0.0, N).wait_and_throw();
+        if (N > 0) {
+          queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
+          queue.fill(d_ptr, 0.0, N).wait_and_throw();
+        }
 
         ASSERT_TRUE(
             check_error_code(curandGenerateUniformDouble(generator, d_ptr, N)));
@@ -102,8 +109,10 @@ template <typename VALUE_TYPE> inline void wrapper_uniform() {
         lambda_transform();
 
         std::vector<VALUE_TYPE> correct_prev = correct;
-        queue.memcpy(correct.data(), d_ptr, num_bytes).wait_and_throw();
-        queue.fill(d_ptr, 0.0, N).wait_and_throw();
+        if (N > 0) {
+          queue.memcpy(correct.data(), d_ptr, num_bytes).wait_and_throw();
+          queue.fill(d_ptr, 0.0, N).wait_and_throw();
+        }
         ASSERT_EQ(correct, to_test);
 
         bool one_different = N > 0 ? false : true;
