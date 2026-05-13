@@ -2,6 +2,7 @@
 #define _NESO_RNG_TOOLKIT_CREATE_RNG_HPP_
 
 #include "platforms/curand.hpp"
+#include "platforms/hiprand.hpp"
 #include "platforms/onemkl.hpp"
 #include "platforms/stdlib.hpp"
 #include "rng.hpp"
@@ -67,6 +68,16 @@ create_rng(DISTRIBUTION_TYPE distribution, std::uint64_t seed,
   if (platform_name == "curand" && rng == nullptr) {
     if (is_cuda_device(device, device_index)) {
       rng = CurandPlatform<VALUE_TYPE>{}.create_rng(
+          distribution, seed, device, device_index, generator_name);
+    } else {
+      rng = StdLibPlatform<VALUE_TYPE>{}.create_rng(
+          distribution, seed, device, device_index, generator_name);
+    }
+  }
+
+  if (platform_name == "hipRAND" && rng == nullptr) {
+    if (is_hip_device(device, device_index)) {
+      rng = hipRANDPlatform<VALUE_TYPE>{}.create_rng(
           distribution, seed, device, device_index, generator_name);
     } else {
       rng = StdLibPlatform<VALUE_TYPE>{}.create_rng(

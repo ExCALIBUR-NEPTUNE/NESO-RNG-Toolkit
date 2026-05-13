@@ -13,6 +13,23 @@ namespace NESO::RNGToolkit {
 #ifdef __HIP_PLATFORM_NVIDIA__
 #endif
 
+/**
+ * Check an error code against hipSuccess and print the corresonding error on
+ * failure.
+ *
+ * @param err Error code to test.
+ * @returns True if err == hipSuccess otherwise false.
+ */
+inline bool check_error_code(hipError_t err) {
+  if (err != hipSuccess) {
+    std::cout << err << " = hipError_t != hipSuccess" << std::endl;
+    std::cout << hipGetErrorName(err) << std::endl;
+    std::cout << hipGetErrorString(err) << std::endl;
+    return false;
+  }
+  return true;
+}
+
 template <typename VALUE_TYPE>
 RNGSharedPtr<VALUE_TYPE> hipRANDPlatform<VALUE_TYPE>::create_rng(
     [[maybe_unused]] Distribution::Uniform<VALUE_TYPE> distribution,

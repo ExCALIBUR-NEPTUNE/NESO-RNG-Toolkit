@@ -147,6 +147,14 @@ if(hiprand_FOUND)
   # hip::host is not adding the include directories....
   target_include_directories(NESO-RNG-Toolkit SYSTEM PRIVATE ${HIP_INCLUDE_DIR})
 
+  message(STATUS "HIP_PLATFORM=" ${HIP_PLATFORM})
+
+  if(HIP_PLATFORM STREQUAL "nvidia")
+    target_compile_definitions(NESO-RNG-Toolkit PRIVATE __HIP_PLATFORM_NVIDIA__)
+  else()
+    target_compile_definitions(NESO-RNG-Toolkit PRIVATE __HIP_PLATFORM_AMD__)
+  endif()
+
   set(NESO_RNG_TOOLKIT_USING_HIPRAND TRUE)
 else()
   message(STATUS "hipRAND NOT Found")

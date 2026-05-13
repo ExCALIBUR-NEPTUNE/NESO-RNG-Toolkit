@@ -60,6 +60,12 @@ foreach(TEST ${TEST_SRCS})
       PRIVATE hip::hiprand)
 
     target_include_directories(${TEST_NAME} SYSTEM PRIVATE ${HIP_INCLUDE_DIR})
+
+    if(HIP_PLATFORM STREQUAL "nvidia")
+      target_compile_definitions(${TEST_NAME} PRIVATE __HIP_PLATFORM_NVIDIA__)
+    else()
+      target_compile_definitions(${TEST_NAME} PRIVATE __HIP_PLATFORM_AMD__)
+    endif()
   endif()
 
   target_compile_definitions(${TEST_NAME}
@@ -102,6 +108,12 @@ if(NESO_RNG_TOOLKIT_USING_HIPRAND)
     PRIVATE hip::host
     PRIVATE hip::hiprand)
   target_include_directories(${EXECUTABLE} SYSTEM PRIVATE ${HIP_INCLUDE_DIR})
+
+  if(HIP_PLATFORM STREQUAL "nvidia")
+    target_compile_definitions(${EXECUTABLE} PRIVATE __HIP_PLATFORM_NVIDIA__)
+  else()
+    target_compile_definitions(${EXECUTABLE} PRIVATE __HIP_PLATFORM_AMD__)
+  endif()
 endif()
 target_compile_definitions(${EXECUTABLE}
                            PRIVATE NESO_RNG_TOOLKIT_TEST_COMPILATION)
