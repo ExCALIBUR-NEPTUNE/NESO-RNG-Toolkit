@@ -310,7 +310,6 @@ RNGSharedPtr<VALUE_TYPE> CurandPlatform<VALUE_TYPE>::create_rng(
         std::make_shared<CurandRNG<VALUE_TYPE>>(device, device_index,
                                                 CURAND_RNG_PSEUDO_DEFAULT, seed,
                                                 dist, transform, false));
-    ;
   } else {
     return nullptr;
   }
@@ -338,7 +337,6 @@ RNGSharedPtr<VALUE_TYPE> CurandPlatform<VALUE_TYPE>::create_rng(
         std::make_shared<CurandRNG<VALUE_TYPE>>(device, device_index,
                                                 CURAND_RNG_PSEUDO_DEFAULT, seed,
                                                 dist, transform, true));
-    ;
   } else {
     return nullptr;
   }

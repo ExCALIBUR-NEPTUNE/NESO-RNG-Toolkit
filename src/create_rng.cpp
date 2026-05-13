@@ -7,15 +7,17 @@ namespace NESO::RNGToolkit {
 std::string get_default_platform() {
 #ifdef NESO_RNG_TOOLKIT_ONEMKL
   return "oneMKL";
-#else
+#endif
 
 #ifdef NESO_RNG_TOOLKIT_CURAND
   return "curand";
-#else
-  return "stdlib";
 #endif
 
+#ifdef NESO_RNG_TOOLKIT_HIPRAND
+  return "hipRAND";
 #endif
+
+  return "stdlib";
 }
 
 std::uint64_t create_seeds(std::size_t size, std::size_t rank,
