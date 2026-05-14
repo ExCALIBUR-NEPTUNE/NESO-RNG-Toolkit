@@ -180,6 +180,19 @@ template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
     }
   }
 
+  /**
+   * Create a RNG instance that calls curand.
+   *
+   * @param device SYCL device that is also a CUDA device on which to compute
+   * samples.
+   * @param device_index Index of device on node.
+   * @param rng RNG type from which to sample.
+   * @param seed Seed to initialise RNG with.
+   * @param dist Wrapper function that abstracts the various RNG sampling
+   * functions.
+   * @param requires_even_number_of_samples If true then the sampler will only
+   * sample an even number of values.
+   */
   CurandRNG(
       sycl::device device, std::size_t device_index, curandRngType_t rng,
       std::uint64_t seed,

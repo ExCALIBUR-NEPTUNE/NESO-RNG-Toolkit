@@ -15,6 +15,17 @@ void print_version() {
 #ifdef NESO_RNG_TOOLKIT_CURAND
   std::cout << "curand enabled" << std::endl;
 #endif
+
+#ifdef NESO_RNG_TOOLKIT_HIPRAND
+
+#ifdef __HIP_PLATFORM_AMD__
+  std::cout << "AMD hipRAND enabled" << std::endl;
+#endif
+#ifdef __HIP_PLATFORM_NVIDIA__
+  std::cout << "CUDA hipRAND enabled" << std::endl;
+#endif
+
+#endif
 }
 
 } // namespace NESO::RNGToolkit

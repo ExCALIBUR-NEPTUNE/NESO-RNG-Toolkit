@@ -24,7 +24,7 @@ bool is_hip_device(sycl::device device, const std::size_t device_index);
 template <typename VALUE_TYPE>
 struct hipRANDPlatform : public Platform<VALUE_TYPE> {
 
-  const static inline std::set<std::string> generators = {"default_engine"};
+  const static inline std::set<std::string> generators = {"default"};
 
   virtual ~hipRANDPlatform() = default;
 
