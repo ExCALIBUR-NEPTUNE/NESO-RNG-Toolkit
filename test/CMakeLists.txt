@@ -63,6 +63,10 @@ foreach(TEST ${TEST_SRCS})
 
     if(HIP_PLATFORM STREQUAL "nvidia")
       target_compile_definitions(${TEST_NAME} PRIVATE __HIP_PLATFORM_NVIDIA__)
+      target_link_libraries(
+        ${TEST_NAME}
+        PRIVATE CUDA::cudart
+        PRIVATE CUDA::curand)
     else()
       target_compile_definitions(${TEST_NAME} PRIVATE __HIP_PLATFORM_AMD__)
     endif()
@@ -111,6 +115,10 @@ if(NESO_RNG_TOOLKIT_USING_HIPRAND)
 
   if(HIP_PLATFORM STREQUAL "nvidia")
     target_compile_definitions(${EXECUTABLE} PRIVATE __HIP_PLATFORM_NVIDIA__)
+    target_link_libraries(
+      ${EXECUTABLE}
+      PRIVATE CUDA::cudart
+      PRIVATE CUDA::curand)
   else()
     target_compile_definitions(${EXECUTABLE} PRIVATE __HIP_PLATFORM_AMD__)
   endif()

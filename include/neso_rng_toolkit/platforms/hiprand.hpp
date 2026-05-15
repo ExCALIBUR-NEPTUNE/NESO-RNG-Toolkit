@@ -46,6 +46,8 @@ extern template struct hipRANDPlatform<float>;
 
 #else
 
+inline bool is_hip_device(sycl::device, const std::size_t) { return false; }
+
 /**
  * If hipRAND is not found then we make the hipRANDPlatform a copy of the
  * StdLibPlatform.

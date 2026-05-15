@@ -151,6 +151,12 @@ if(hiprand_FOUND)
 
   if(HIP_PLATFORM STREQUAL "nvidia")
     target_compile_definitions(NESO-RNG-Toolkit PRIVATE __HIP_PLATFORM_NVIDIA__)
+    # The hip::hiprand target does not find CUDA::curand automatically.
+    find_package(CUDAToolkit QUIET)
+    target_link_libraries(
+      NESO-RNG-Toolkit
+      PRIVATE CUDA::cudart
+      PRIVATE CUDA::curand)
   else()
     target_compile_definitions(NESO-RNG-Toolkit PRIVATE __HIP_PLATFORM_AMD__)
   endif()
