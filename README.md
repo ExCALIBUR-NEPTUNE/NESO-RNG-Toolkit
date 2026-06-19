@@ -9,12 +9,14 @@ These are the currently supported platforms:
 | `stdlib`      | The C++ standard library random implementations. |
 | `curand`      | CUDA provided RNG samples via cuRAND. |
 | `oneMKL`      | Intel SYCL provided RNG samples via oneMKL. |
+| `hipRAND`     | rocRAND or cuRAND provided RNG samples via hipRAND. |
 
 ## Requirements
 
 * SYCL 2020 implementation. e.g. oneAPI or AdaptiveCpp.
 * (Optional) oneMKL.
 * (Optional) cuRAND.
+* (Optional) hipRAND.
 
 ## CMake
 
@@ -28,7 +30,8 @@ The following table lists the options which can be passed to CMake to configure 
 | `NESO_RNG_TOOLKIT_REQUIRE_ONEMKL` | `OFF` | Search for oneMKL in a fatal manner if it is not found. |
 | `NESO_RNG_TOOLKIT_ENABLE_CURAND` | `ON` | Search for cuRAND in a non-fatal manner if it is not found. |
 | `NESO_RNG_TOOLKIT_REQUIRE_CURAND` | `OFF` | Search for cuRAND in a fatal manner if it is not found. |
-
+| `NESO_RNG_TOOLKIT_ENABLE_HIPRAND` | `ON` | Search for hipRAND in a non-fatal manner if it is not found. |
+| `NESO_RNG_TOOLKIT_REQUIRE_HIPRAND` | `OFF` | Search for hipRAND in a fatal manner if it is not found. |
 
 Downstream projects which use NESO-RNG-Toolkit should write CMake implementation that looks like the following example. 
 Please see the examples directory for a NESO-Particles example.
@@ -175,5 +178,6 @@ If you would like the interface to allow use of a particular RNG implementation 
 | `stdlib`      | `mt19937_64`           |
 | `oneMKL`      | `default_engine`       |
 | `curand`      | `default` (alias for `CURAND_RNG_PSEUDO_DEFAULT`) |
+| `hipRAND`      | `default` (alias for `HIPRAND_RNG_PSEUDO_DEFAULT`) |
 
 

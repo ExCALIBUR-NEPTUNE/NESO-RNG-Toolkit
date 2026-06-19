@@ -1,58 +1,64 @@
-#ifndef _NESO_RNG_TOOLKIT_PLATFORMS_CURAND_IMPL_HPP_
-#define _NESO_RNG_TOOLKIT_PLATFORMS_CURAND_IMPL_HPP_
-#ifdef NESO_RNG_TOOLKIT_CURAND
+#ifndef _NESO_RNG_TOOLKIT_PLATFORMS_HIPRAND_IMPL_HPP_
+#define _NESO_RNG_TOOLKIT_PLATFORMS_HIPRAND_IMPL_HPP_
+#ifdef NESO_RNG_TOOLKIT_HIPRAND
 
-#include "curand.hpp"
-#include <cuda_runtime.h>
-#include <curand.h>
+#include "hiprand.hpp"
+#include <hiprand/hiprand.hpp>
 #include <type_traits>
 
 namespace NESO::RNGToolkit {
 
-inline bool check_error_code(curandStatus_t err) {
-  if (err != CURAND_STATUS_SUCCESS) {
-    std::cout << err << " = curandStatus_t != CURAND_STATUS_SUCCESS"
-              << std::endl;
-    return false;
-  }
-  return true;
-}
-
-inline bool check_error_code(cudaError_t err) {
-  if (err != cudaSuccess) {
-    std::cout << err << " = cudaError_t != cudaSuccess" << std::endl;
+/**
+ * Check an error code against hipSuccess and print the corresonding error on
+ * failure.
+ *
+ * @param err Error code to test.
+ * @returns True if err == hipSuccess otherwise false.
+ */
+inline bool check_error_code(hipError_t err) {
+  if (err != hipSuccess) {
+    std::cout << err << " = hipError_t != hipSuccess" << std::endl;
+    std::cout << hipGetErrorName(err) << std::endl;
+    std::cout << hipGetErrorString(err) << std::endl;
     return false;
   }
   return true;
 }
 
 /**
- * Try to determine if the SYCL device is actually a cuda device.
+ * Check an error code against HIPRAND_STATUS_SUCCESS and print the corresonding
+ * error on failure.
  *
- * @param device SYCL device.
- * @param device_index Device index in host sycl platform.
- * @returns True if this function determines that the device is a CUDA device.
+ * @param err Error code to test.
+ * @returns True if err == hipSuccess otherwise false.
  */
-bool is_cuda_device(sycl::device device, const std::size_t device_index);
+inline bool check_error_code(hiprandStatus_t err) {
+  if (err != HIPRAND_STATUS_SUCCESS) {
+    std::cout << err << " = hiprandStatus_t != HIPRAND_STATUS_SUCCESS"
+              << std::endl;
+    return false;
+  }
+  return true;
+}
 
-template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
+template <typename VALUE_TYPE> struct hipRANDRNG : RNG<VALUE_TYPE> {
 
-  virtual ~CurandRNG() {
+  virtual ~hipRANDRNG() {
     if (this->d_even_buffer != nullptr) {
-      check_error_code(cudaFreeAsync(this->d_even_buffer, this->stream));
+      check_error_code(hipFreeAsync(this->d_even_buffer, this->stream));
     }
-    check_error_code(curandDestroyGenerator(this->generator));
-    check_error_code(cudaStreamDestroy(this->stream));
+    check_error_code(hiprandDestroyGenerator(this->generator));
+    check_error_code(hipStreamDestroy(this->stream));
   }
   sycl::device device;
   sycl::queue queue;
   bool rng_good{true};
-  cudaStream_t stream;
+  hipStream_t stream;
   std::size_t device_index;
-  curandRngType_t rng;
-  curandGenerator_t generator;
+  hiprandRngType_t rng;
+  hiprandGenerator_t generator;
 
-  std::function<curandStatus_t(curandGenerator_t, VALUE_TYPE *, std::size_t)>
+  std::function<hiprandStatus_t(hiprandGenerator_t, VALUE_TYPE *, std::size_t)>
       dist;
 
   std::function<void(sycl::queue, VALUE_TYPE *, std::size_t)> transform;
@@ -66,7 +72,7 @@ template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
     if (!this->rng_good) {
       return -1;
     }
-    if (check_error_code(cudaStreamSynchronize(this->stream))) {
+    if (check_error_code(hipStreamSynchronize(this->stream))) {
       const std::size_t num_samples = this->map_ptr_num_samples.at(d_ptr);
       if (num_samples > 0) {
         this->transform(this->queue, d_ptr, num_samples);
@@ -90,7 +96,7 @@ template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
       return SUCCESS;
     }
 
-    // The cuRAND normal and lognormal (?) generators will error if the
+    // The hipRAND normal and lognormal (?) generators will error if the
     // alignment of the output buffers is not twice the standard alignment.
     const std::size_t offset_start =
         this->requires_even_number_of_samples
@@ -99,7 +105,7 @@ template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
                   sizeof(VALUE_TYPE)
             : 0;
 
-    // The cuRAND normal and lognormal generators will only sample an even
+    // The hipRAND normal and lognormal generators will only sample an even
     // number of values and the pointers have to aligned to two values.
     std::size_t offset_end = 0;
 
@@ -126,28 +132,28 @@ template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
           check_error_code(this->dist(this->generator, this->d_even_buffer,
                                       this->even_buffer_size));
       this->rng_good = this->rng_good &&
-                       check_error_code(cudaStreamSynchronize(this->stream));
+                       check_error_code(hipStreamSynchronize(this->stream));
 
       if (offset_start) {
         this->rng_good =
             this->rng_good &&
-            check_error_code(cudaMemcpyAsync(
+            check_error_code(hipMemcpyAsync(
                 d_ptr, this->d_even_buffer, offset_start * sizeof(VALUE_TYPE),
-                cudaMemcpyDeviceToDevice, this->stream));
+                hipMemcpyDeviceToDevice, this->stream));
       }
 
       if (offset_end && ((offset_start + offset_end) <= num_samples)) {
         this->rng_good =
             this->rng_good &&
-            check_error_code(cudaMemcpyAsync(
+            check_error_code(hipMemcpyAsync(
                 d_ptr + num_samples - offset_end,
                 this->d_even_buffer + this->even_buffer_size - offset_end,
-                offset_end * sizeof(VALUE_TYPE), cudaMemcpyDeviceToDevice,
+                offset_end * sizeof(VALUE_TYPE), hipMemcpyDeviceToDevice,
                 this->stream));
       }
 
       this->rng_good = this->rng_good &&
-                       check_error_code(cudaStreamSynchronize(this->stream));
+                       check_error_code(hipStreamSynchronize(this->stream));
     }
 
     if (!this->rng_good) {
@@ -181,9 +187,9 @@ template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
   }
 
   /**
-   * Create a RNG instance that calls curand.
+   * Create a RNG instance that calls hipRAND.
    *
-   * @param device SYCL device that is also a CUDA device on which to compute
+   * @param device SYCL device that is also a HIP device on which to compute
    * samples.
    * @param device_index Index of device on node.
    * @param rng RNG type from which to sample.
@@ -193,11 +199,11 @@ template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
    * @param requires_even_number_of_samples If true then the sampler will only
    * sample an even number of values.
    */
-  CurandRNG(
-      sycl::device device, std::size_t device_index, curandRngType_t rng,
+  hipRANDRNG(
+      sycl::device device, std::size_t device_index, hiprandRngType_t rng,
       std::uint64_t seed,
-      std::function<curandStatus_t(curandGenerator_t, VALUE_TYPE *,
-                                   std::size_t)>
+      std::function<hiprandStatus_t(hiprandGenerator_t, VALUE_TYPE *,
+                                    std::size_t)>
           dist,
       std::function<void(sycl::queue, VALUE_TYPE *, std::size_t)> transform,
       const bool requires_even_number_of_samples)
@@ -205,86 +211,91 @@ template <typename VALUE_TYPE> struct CurandRNG : RNG<VALUE_TYPE> {
         dist(dist), transform(transform),
         requires_even_number_of_samples(requires_even_number_of_samples) {
 
-    this->platform_name = "curand";
+    this->platform_name = "hipRAND";
 
     this->rng_good =
         this->rng_good &&
-        check_error_code(cudaSetDevice(static_cast<int>(device_index)));
+        check_error_code(hipSetDevice(static_cast<int>(device_index)));
     this->rng_good =
-        this->rng_good && check_error_code(cudaStreamCreate(&this->stream));
+        this->rng_good && check_error_code(hipStreamCreate(&this->stream));
 
     this->rng_good =
         this->rng_good &&
-        check_error_code(curandCreateGenerator(&this->generator, this->rng));
+        check_error_code(hiprandCreateGenerator(&this->generator, this->rng));
 
     this->rng_good =
         this->rng_good &&
-        check_error_code(curandSetStream(this->generator, this->stream));
+        check_error_code(hiprandSetStream(this->generator, this->stream));
 
     this->rng_good =
-        this->rng_good && check_error_code(curandSetPseudoRandomGeneratorSeed(
+        this->rng_good && check_error_code(hiprandSetPseudoRandomGeneratorSeed(
                               this->generator, seed));
 
     if (this->requires_even_number_of_samples) {
+
+      void *tmp_ptr = nullptr;
       this->rng_good =
           this->rng_good &&
-          check_error_code(cudaMallocAsync(
-              &(this->d_even_buffer),
-              this->even_buffer_size * sizeof(VALUE_TYPE), this->stream));
+          check_error_code(hipMallocAsync(
+              &tmp_ptr, this->even_buffer_size * sizeof(VALUE_TYPE),
+              this->stream));
+
+      this->d_even_buffer = static_cast<VALUE_TYPE *>(tmp_ptr);
+
       this->rng_good = this->rng_good &&
-                       check_error_code(cudaStreamSynchronize(this->stream));
+                       check_error_code(hipStreamSynchronize(this->stream));
       this->rng_good = this->rng_good && (this->d_even_buffer != nullptr);
     }
   }
 };
 
-inline std::function<curandStatus_t(curandGenerator_t, double *, std::size_t)>
-get_curand_uniform_dist(double) {
-  return [=](curandGenerator_t generator, double *d_ptr,
-             std::size_t num_samples) -> curandStatus_t {
-    return curandGenerateUniformDouble(generator, d_ptr, num_samples);
+inline std::function<hiprandStatus_t(hiprandGenerator_t, double *, std::size_t)>
+get_hiprand_uniform_dist(double) {
+  return [=](hiprandGenerator_t generator, double *d_ptr,
+             std::size_t num_samples) -> hiprandStatus_t {
+    return hiprandGenerateUniformDouble(generator, d_ptr, num_samples);
   };
 }
 
-inline std::function<curandStatus_t(curandGenerator_t, float *, std::size_t)>
-get_curand_uniform_dist(float) {
-  return [=](curandGenerator_t generator, float *d_ptr,
-             std::size_t num_samples) -> curandStatus_t {
-    return curandGenerateUniform(generator, d_ptr, num_samples);
+inline std::function<hiprandStatus_t(hiprandGenerator_t, float *, std::size_t)>
+get_hiprand_uniform_dist(float) {
+  return [=](hiprandGenerator_t generator, float *d_ptr,
+             std::size_t num_samples) -> hiprandStatus_t {
+    return hiprandGenerateUniform(generator, d_ptr, num_samples);
   };
 }
 
-inline std::function<curandStatus_t(curandGenerator_t, double *, std::size_t)>
-get_curand_normal_dist(const double mean, const double stddev) {
-  return [=](curandGenerator_t generator, double *d_ptr,
-             std::size_t num_samples) -> curandStatus_t {
-    return curandGenerateNormalDouble(generator, d_ptr, num_samples, mean,
-                                      stddev);
+inline std::function<hiprandStatus_t(hiprandGenerator_t, double *, std::size_t)>
+get_hiprand_normal_dist(const double mean, const double stddev) {
+  return [=](hiprandGenerator_t generator, double *d_ptr,
+             std::size_t num_samples) -> hiprandStatus_t {
+    return hiprandGenerateNormalDouble(generator, d_ptr, num_samples, mean,
+                                       stddev);
   };
 }
 
-inline std::function<curandStatus_t(curandGenerator_t, float *, std::size_t)>
-get_curand_normal_dist(const float mean, const float stddev) {
-  return [=](curandGenerator_t generator, float *d_ptr,
-             std::size_t num_samples) -> curandStatus_t {
-    return curandGenerateNormal(generator, d_ptr, num_samples, mean, stddev);
+inline std::function<hiprandStatus_t(hiprandGenerator_t, float *, std::size_t)>
+get_hiprand_normal_dist(const float mean, const float stddev) {
+  return [=](hiprandGenerator_t generator, float *d_ptr,
+             std::size_t num_samples) -> hiprandStatus_t {
+    return hiprandGenerateNormal(generator, d_ptr, num_samples, mean, stddev);
   };
 }
 
 template <typename VALUE_TYPE>
-RNGSharedPtr<VALUE_TYPE> CurandPlatform<VALUE_TYPE>::create_rng(
+RNGSharedPtr<VALUE_TYPE> hipRANDPlatform<VALUE_TYPE>::create_rng(
     [[maybe_unused]] Distribution::Uniform<VALUE_TYPE> distribution,
     std::uint64_t seed, sycl::device device, std::size_t device_index,
     std::string generator_name) {
   generator_name = this->get_generator_name(generator_name, "default");
   if (this->check_generator_name(generator_name, this->generators)) {
-
-    std::function<curandStatus_t(curandGenerator_t, VALUE_TYPE *, std::size_t)>
-        dist = get_curand_uniform_dist(static_cast<VALUE_TYPE>(0.0));
+    std::function<hiprandStatus_t(hiprandGenerator_t, VALUE_TYPE *,
+                                  std::size_t)>
+        dist = get_hiprand_uniform_dist(static_cast<VALUE_TYPE>(0.0));
 
     /**
      * Our interface follows the C++ standard and defines the interval as
-     * [a,b). Curand samples values in (0,1]. Hence we transform the output to
+     * [a,b). hipRAND samples values in (0,1]. Hence we transform the output to
      * be in [a,b).
      */
 
@@ -320,26 +331,27 @@ RNGSharedPtr<VALUE_TYPE> CurandPlatform<VALUE_TYPE>::create_rng(
         };
 
     return std::dynamic_pointer_cast<RNG<VALUE_TYPE>>(
-        std::make_shared<CurandRNG<VALUE_TYPE>>(device, device_index,
-                                                CURAND_RNG_PSEUDO_DEFAULT, seed,
-                                                dist, transform, false));
+        std::make_shared<hipRANDRNG<VALUE_TYPE>>(device, device_index,
+                                                 HIPRAND_RNG_PSEUDO_DEFAULT,
+                                                 seed, dist, transform, false));
   } else {
     return nullptr;
   }
 }
 
 template <typename VALUE_TYPE>
-RNGSharedPtr<VALUE_TYPE> CurandPlatform<VALUE_TYPE>::create_rng(
+RNGSharedPtr<VALUE_TYPE> hipRANDPlatform<VALUE_TYPE>::create_rng(
     [[maybe_unused]] Distribution::Normal<VALUE_TYPE> distribution,
     std::uint64_t seed, [[maybe_unused]] sycl::device device,
     std::size_t device_index, std::string generator_name) {
   generator_name = this->get_generator_name(generator_name, "default");
   if (this->check_generator_name(generator_name, this->generators)) {
 
-    std::function<curandStatus_t(curandGenerator_t, VALUE_TYPE *, std::size_t)>
-        dist = get_curand_normal_dist(distribution.mean, distribution.stddev);
+    std::function<hiprandStatus_t(hiprandGenerator_t, VALUE_TYPE *,
+                                  std::size_t)>
+        dist = get_hiprand_normal_dist(distribution.mean, distribution.stddev);
 
-    // No transform is needed for curand Normal distribution.
+    // No transform is needed for hiprand Normal distribution.
     sycl::queue queue{device};
     std::function<void(sycl::queue, VALUE_TYPE *, std::size_t)> transform =
         [=]([[maybe_unused]] sycl::queue queue,
@@ -347,9 +359,9 @@ RNGSharedPtr<VALUE_TYPE> CurandPlatform<VALUE_TYPE>::create_rng(
             [[maybe_unused]] std::size_t num_samples) {};
 
     return std::dynamic_pointer_cast<RNG<VALUE_TYPE>>(
-        std::make_shared<CurandRNG<VALUE_TYPE>>(device, device_index,
-                                                CURAND_RNG_PSEUDO_DEFAULT, seed,
-                                                dist, transform, true));
+        std::make_shared<hipRANDRNG<VALUE_TYPE>>(device, device_index,
+                                                 HIPRAND_RNG_PSEUDO_DEFAULT,
+                                                 seed, dist, transform, true));
   } else {
     return nullptr;
   }

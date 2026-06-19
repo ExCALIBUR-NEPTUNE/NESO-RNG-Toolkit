@@ -1,0 +1,302 @@
+#ifdef NESO_RNG_TOOLKIT_HIPRAND
+#include <gtest/gtest.h>
+#include <neso_rng_toolkit.hpp>
+#include <neso_rng_toolkit/platforms/hiprand_impl.hpp>
+
+using namespace NESO::RNGToolkit;
+
+TEST(PlatformhipRAND, base) {
+  sycl::device device{sycl::default_selector_v};
+  sycl::queue queue{device};
+  ASSERT_TRUE(check_error_code(static_cast<hipError_t>(hipSuccess)));
+}
+
+namespace {
+
+template <typename VALUE_TYPE> inline void wrapper_uniform() {
+  sycl::device device{sycl::default_selector_v};
+  if (device.is_gpu()) {
+    sycl::queue queue{device};
+
+    for (std::size_t N : {0, 1, 2, 3, 127, 301, 10238, 10239}) {
+      for (std::size_t alignment_offset = 0; alignment_offset < 8;
+           alignment_offset++) {
+
+        const std::uint64_t seed = 1234;
+        const std::size_t num_bytes = N * sizeof(VALUE_TYPE);
+
+        const VALUE_TYPE a = -2.0;
+        const VALUE_TYPE b = 2.0;
+
+        auto to_test_rng =
+            create_rng<VALUE_TYPE>(Distribution::Uniform<VALUE_TYPE>{a, b},
+                                   seed, device, 0, "hipRAND", "default");
+
+        ASSERT_EQ(to_test_rng->platform_name, "hipRAND");
+
+        VALUE_TYPE *d_orig_ptr = static_cast<VALUE_TYPE *>(sycl::malloc_device(
+            num_bytes + alignment_offset * sizeof(VALUE_TYPE), queue));
+
+        VALUE_TYPE *d_ptr = d_orig_ptr + alignment_offset;
+
+        std::vector<VALUE_TYPE> correct(N);
+        std::vector<VALUE_TYPE> to_test(N);
+
+        ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N) == SUCCESS);
+        if (N > 0) {
+          queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
+          queue.fill(d_ptr, 0.0, N).wait_and_throw();
+        }
+        std::shared_ptr<hipRANDRNG<VALUE_TYPE>> cast_rng =
+            std::dynamic_pointer_cast<hipRANDRNG<VALUE_TYPE>>(to_test_rng);
+        ASSERT_NE(cast_rng, nullptr);
+
+        hiprandGenerator_t generator;
+
+        ASSERT_TRUE(check_error_code(
+            hiprandCreateGenerator(&generator, cast_rng->rng)));
+        ASSERT_TRUE(
+            check_error_code(hiprandSetStream(generator, cast_rng->stream)));
+        ASSERT_TRUE(check_error_code(
+            hiprandSetPseudoRandomGeneratorSeed(generator, seed)));
+
+        ASSERT_TRUE(check_error_code(
+            hiprandGenerateUniformDouble(generator, d_ptr, N)));
+        ASSERT_TRUE(check_error_code(hipStreamSynchronize(cast_rng->stream)));
+
+        auto lambda_transform = [&]() {
+          const VALUE_TYPE k_a = a;
+          const VALUE_TYPE k_b = b;
+          const VALUE_TYPE k_width = k_b - k_a;
+          const VALUE_TYPE k_max_allowed_value =
+              Distribution::previous_value(b);
+
+          if (N > 0) {
+            queue
+                .parallel_for(sycl::range<1>(N),
+                              [=](auto idx) {
+                                const VALUE_TYPE original = d_ptr[idx];
+                                // Transform the interval from (0, 1] to [0, 1).
+                                const VALUE_TYPE swapped_interval =
+                                    1.0 - original;
+                                // Transform to [a, b);
+                                VALUE_TYPE transform_interval =
+                                    swapped_interval * k_width + k_a;
+                                // Ensure after all that we are actually in [a,
+                                // b)
+                                transform_interval = (transform_interval < k_a)
+                                                         ? k_a
+                                                         : transform_interval;
+                                transform_interval = (transform_interval >= k_b)
+                                                         ? k_max_allowed_value
+                                                         : transform_interval;
+                                d_ptr[idx] = transform_interval;
+                              })
+                .wait_and_throw();
+          }
+        };
+
+        lambda_transform();
+
+        if (N > 0) {
+          queue.memcpy(correct.data(), d_ptr, num_bytes).wait_and_throw();
+          queue.fill(d_ptr, 0.0, N).wait_and_throw();
+        }
+        ASSERT_EQ(correct, to_test);
+
+        ASSERT_TRUE(to_test_rng->get_samples(d_ptr, N) == SUCCESS);
+        if (N > 0) {
+          queue.memcpy(to_test.data(), d_ptr, num_bytes).wait_and_throw();
+          queue.fill(d_ptr, 0.0, N).wait_and_throw();
+        }
+
+        ASSERT_TRUE(check_error_code(
+            hiprandGenerateUniformDouble(generator, d_ptr, N)));
+        ASSERT_TRUE(check_error_code(hipStreamSynchronize(cast_rng->stream)));
+        lambda_transform();
+
+        std::vector<VALUE_TYPE> correct_prev = correct;
+        if (N > 0) {
+          queue.memcpy(correct.data(), d_ptr, num_bytes).wait_and_throw();
+          queue.fill(d_ptr, 0.0, N).wait_and_throw();
+        }
+        ASSERT_EQ(correct, to_test);
+
+        bool one_different = N > 0 ? false : true;
+        for (std::size_t ix = 0; ix < N; ix++) {
+          if (correct.at(ix) != correct_prev.at(ix)) {
+            one_different = true;
+          }
+        }
+        ASSERT_TRUE(one_different);
+
+        ASSERT_TRUE(check_error_code(hiprandDestroyGenerator(generator)));
+
+        sycl::free(d_orig_ptr, queue);
+      }
+    }
+  }
+}
+
+template <typename VALUE_TYPE> inline void wrapper_normal() {
+  sycl::device device{sycl::default_selector_v};
+  if (device.is_gpu()) {
+    sycl::queue queue{device};
+    for (std::size_t N : {1, 2, 3, 127, 301, 10238, 10239}) {
+      for (std::size_t alignment_offset = 0; alignment_offset < 8;
+           alignment_offset++) {
+
+        const std::uint64_t seed = 1234;
+        const std::size_t num_bytes = N * sizeof(VALUE_TYPE);
+
+        const VALUE_TYPE mean = 2.0;
+        const VALUE_TYPE stddev = 4.0;
+
+        auto to_test_rng = create_rng<VALUE_TYPE>(
+            Distribution::Normal<VALUE_TYPE>{mean, stddev}, seed, device, 0,
+            "hipRAND", "default");
+
+        ASSERT_EQ(to_test_rng->platform_name, "hipRAND");
+
+        VALUE_TYPE *d0_ptr =
+            static_cast<VALUE_TYPE *>(sycl::malloc_device(num_bytes, queue));
+
+        VALUE_TYPE *d0_aligned_ptr =
+            static_cast<VALUE_TYPE *>(sycl::malloc_device(num_bytes, queue));
+
+        VALUE_TYPE *d_orig_ptr = static_cast<VALUE_TYPE *>(sycl::malloc_device(
+            num_bytes + alignment_offset * sizeof(VALUE_TYPE), queue));
+
+        VALUE_TYPE *d1_ptr = d_orig_ptr + alignment_offset;
+
+        const std::size_t even_buffer_size =
+            hipRANDRNG<VALUE_TYPE>::even_buffer_size;
+        VALUE_TYPE *d_even_buffer = static_cast<VALUE_TYPE *>(
+            sycl::malloc_device(sizeof(VALUE_TYPE) * even_buffer_size, queue));
+
+        std::vector<VALUE_TYPE> correct(N);
+        std::vector<VALUE_TYPE> to_test(N);
+
+        ASSERT_TRUE(to_test_rng->get_samples(d1_ptr, N) == SUCCESS);
+
+        queue.memcpy(to_test.data(), d1_ptr, num_bytes).wait_and_throw();
+        queue.fill(d1_ptr, 0.0, N).wait_and_throw();
+
+        std::shared_ptr<hipRANDRNG<VALUE_TYPE>> cast_rng =
+            std::dynamic_pointer_cast<hipRANDRNG<VALUE_TYPE>>(to_test_rng);
+        ASSERT_NE(cast_rng, nullptr);
+
+        hiprandGenerator_t generator;
+
+        ASSERT_TRUE(check_error_code(
+            hiprandCreateGenerator(&generator, cast_rng->rng)));
+        ASSERT_TRUE(
+            check_error_code(hiprandSetStream(generator, cast_rng->stream)));
+        ASSERT_TRUE(check_error_code(
+            hiprandSetPseudoRandomGeneratorSeed(generator, seed)));
+
+        auto lambda_get_sample = [&]() {
+          std::size_t offset_start = alignment_offset % 2;
+          if ((N % 2 == 0) && (offset_start == 0)) {
+
+            ASSERT_TRUE(check_error_code(hiprandGenerateNormalDouble(
+                generator, d0_ptr, N, mean, stddev)));
+            ASSERT_TRUE(
+                check_error_code(hipStreamSynchronize(cast_rng->stream)));
+          } else {
+
+            ASSERT_TRUE(check_error_code(hiprandGenerateNormalDouble(
+                generator, d_even_buffer, even_buffer_size, mean, stddev)));
+            ASSERT_TRUE(
+                check_error_code(hipStreamSynchronize(cast_rng->stream)));
+
+            std::size_t offset_end = (N - offset_start) % 2 == 1 ? 1 : 0;
+
+            std::size_t N_remaining = N - offset_start - offset_end;
+
+            if ((offset_start + offset_end) < N) {
+              ASSERT_TRUE(check_error_code(hiprandGenerateNormalDouble(
+                  generator, d0_aligned_ptr, N_remaining, mean, stddev)));
+              ASSERT_TRUE(
+                  check_error_code(hipStreamSynchronize(cast_rng->stream)));
+            }
+
+            if (offset_start) {
+              queue
+                  .memcpy(d0_ptr, d_even_buffer,
+                          offset_start * sizeof(VALUE_TYPE))
+                  .wait_and_throw();
+            }
+
+            if (offset_end) {
+              queue
+                  .memcpy(d0_ptr + N - offset_end,
+                          d_even_buffer + even_buffer_size - offset_end,
+                          offset_end * sizeof(VALUE_TYPE))
+                  .wait_and_throw();
+            }
+
+            if ((offset_start + offset_end) < N) {
+              queue
+                  .memcpy(d0_ptr + offset_start, d0_aligned_ptr,
+                          N_remaining * sizeof(VALUE_TYPE))
+                  .wait_and_throw();
+            }
+          }
+        };
+
+        lambda_get_sample();
+
+        queue.memcpy(correct.data(), d0_ptr, num_bytes).wait_and_throw();
+        queue.fill(d0_ptr, 0.0, N).wait_and_throw();
+        ASSERT_EQ(correct, to_test);
+
+        ASSERT_TRUE(to_test_rng->get_samples(d1_ptr, N) == SUCCESS);
+        queue.memcpy(to_test.data(), d1_ptr, num_bytes).wait_and_throw();
+        queue.fill(d1_ptr, 0.0, N).wait_and_throw();
+
+        lambda_get_sample();
+
+        std::vector<VALUE_TYPE> correct_prev = correct;
+        queue.memcpy(correct.data(), d0_ptr, num_bytes).wait_and_throw();
+        queue.fill(d0_ptr, 0.0, N).wait_and_throw();
+        ASSERT_EQ(correct, to_test);
+
+        bool one_different = N > 0 ? false : true;
+        for (std::size_t ix = 0; ix < N; ix++) {
+          if (correct.at(ix) != correct_prev.at(ix)) {
+            one_different = true;
+          }
+        }
+        ASSERT_TRUE(one_different);
+
+        ASSERT_TRUE(check_error_code(hiprandDestroyGenerator(generator)));
+
+        // Check for zero samples
+        ASSERT_TRUE(to_test_rng->get_samples(d1_ptr, 0) == SUCCESS);
+
+        sycl::free(d0_ptr, queue);
+        sycl::free(d0_aligned_ptr, queue);
+        sycl::free(d_orig_ptr, queue);
+        sycl::free(d_even_buffer, queue);
+      }
+    }
+  }
+}
+
+} // namespace
+
+TEST(PlatformhipRAND, uniform_double) { wrapper_uniform<double>(); }
+TEST(PlatformhipRAND, normal_double) { wrapper_normal<double>(); }
+TEST(PlatformhipRAND, uniform_double_host) {
+  sycl::device device{sycl::cpu_selector_v};
+  sycl::queue queue{device};
+
+  const std::uint64_t seed = 1234;
+  auto to_test_rng = create_rng<double>(Distribution::Uniform<double>{0.0, 1.0},
+                                        seed, device, 0, "hipRAND", "default");
+
+  // This cpu device should not create a hiprand RNG
+  ASSERT_EQ(to_test_rng->platform_name, "stdlib");
+}
+#endif

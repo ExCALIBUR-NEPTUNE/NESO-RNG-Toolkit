@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 
 project(
   NESO-RNG-Toolkit
-  VERSION 0.1.0
+  VERSION 0.2.0
   LANGUAGES CXX C)
 
 include(GNUInstallDirs)
@@ -17,6 +17,8 @@ option(NESO_RNG_TOOLKIT_ENABLE_ONEMKL "Enable using oneMKL if found." ON)
 option(NESO_RNG_TOOLKIT_REQUIRE_ONEMKL "Force using oneMKL." OFF)
 option(NESO_RNG_TOOLKIT_ENABLE_CURAND "Enable using curand if found." ON)
 option(NESO_RNG_TOOLKIT_REQUIRE_CURAND "Force using curand." OFF)
+option(NESO_RNG_TOOLKIT_ENABLE_HIPRAND "Enable using hiprand if found." ON)
+option(NESO_RNG_TOOLKIT_REQUIRE_HIPRAND "Force using hiprand." OFF)
 option(NESO_RNG_TOOLKIT_ENABLE_TESTS "Build unit tests for this project." ON)
 
 # This means that when the tests and lib are installed they have rpath set for
@@ -33,8 +35,8 @@ endif()
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(SRC_FILES
     ${SRC_DIR}/neso_rng_toolkit.cpp ${SRC_DIR}/create_rng.cpp
-    ${SRC_DIR}/platforms/curand.cpp ${SRC_DIR}/platforms/onemkl.cpp
-    ${SRC_DIR}/platforms/stdlib.cpp)
+    ${SRC_DIR}/platforms/curand.cpp ${SRC_DIR}/platforms/hiprand.cpp
+    ${SRC_DIR}/platforms/onemkl.cpp ${SRC_DIR}/platforms/stdlib.cpp)
 set(SRC_FILES_IGNORE "")
 check_added_file_list(${SRC_DIR} cpp "${SRC_FILES}" "${SRC_FILES_IGNORE}")
 
@@ -48,6 +50,7 @@ set(HEADER_FILES
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/platforms/stdlib.hpp
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/platforms/onemkl.hpp
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/platforms/curand.hpp
+    ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/platforms/hiprand.hpp
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/distribution.hpp
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/rng.hpp
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/typedefs.hpp)
@@ -56,6 +59,7 @@ set(HEADER_FILES
 # directory.
 set(HEADER_FILES_IGNORE
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/platforms/curand_impl.hpp
+    ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/platforms/hiprand_impl.hpp
     ${INCLUDE_DIR_NESO_RNG_TOOLKIT}/platforms/onemkl_impl.hpp)
 check_added_file_list(${INCLUDE_DIR} hpp "${HEADER_FILES}"
                       "${HEADER_FILES_IGNORE}")
@@ -123,6 +127,43 @@ if(CUDAToolkit_FOUND)
   endif()
 else()
   message(STATUS "CUDA Tookit NOT Found")
+endif()
+
+if(NESO_RNG_TOOLKIT_REQUIRE_HIPRAND)
+  find_package(hiprand REQUIRED)
+elseif(NESO_RNG_TOOLKIT_ENABLE_HIPRAND)
+  find_package(hiprand QUIET)
+endif()
+
+set(NESO_RNG_TOOLKIT_USING_HIPRAND FALSE)
+if(hiprand_FOUND)
+  find_package(hip REQUIRED)
+  message(STATUS "hipRAND Found")
+  target_compile_definitions(NESO-RNG-Toolkit PUBLIC NESO_RNG_TOOLKIT_HIPRAND)
+  target_link_libraries(
+    NESO-RNG-Toolkit
+    PRIVATE hip::host
+    PRIVATE hip::hiprand)
+  # hip::host is not adding the include directories....
+  target_include_directories(NESO-RNG-Toolkit SYSTEM PRIVATE ${HIP_INCLUDE_DIR})
+
+  message(STATUS "HIP_PLATFORM=" ${HIP_PLATFORM})
+
+  if(HIP_PLATFORM STREQUAL "nvidia")
+    target_compile_definitions(NESO-RNG-Toolkit PRIVATE __HIP_PLATFORM_NVIDIA__)
+    # The hip::hiprand target does not find CUDA::curand automatically.
+    find_package(CUDAToolkit QUIET)
+    target_link_libraries(
+      NESO-RNG-Toolkit
+      PRIVATE CUDA::cudart
+      PRIVATE CUDA::curand)
+  else()
+    target_compile_definitions(NESO-RNG-Toolkit PRIVATE __HIP_PLATFORM_AMD__)
+  endif()
+
+  set(NESO_RNG_TOOLKIT_USING_HIPRAND TRUE)
+else()
+  message(STATUS "hipRAND NOT Found")
 endif()
 
 # Makes it easy to install + adds the files to the INCLUDE property of the lib

@@ -18,7 +18,8 @@ endif()
 set(TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(TEST_SRCS
     ${TEST_DIR}/test_utility.cpp ${TEST_DIR}/test_platform_stdlib.cpp
-    ${TEST_DIR}/test_platform_onemkl.cpp ${TEST_DIR}/test_platform_curand.cpp)
+    ${TEST_DIR}/test_platform_onemkl.cpp ${TEST_DIR}/test_platform_curand.cpp
+    ${TEST_DIR}/test_platform_hiprand.cpp)
 
 # Check that the files added above are not missing any files in the test
 # directory.
@@ -50,6 +51,25 @@ foreach(TEST ${TEST_SRCS})
       ${TEST_NAME}
       PRIVATE CUDA::cudart
       PRIVATE CUDA::curand)
+  endif()
+
+  if(NESO_RNG_TOOLKIT_USING_HIPRAND)
+    target_link_libraries(
+      ${TEST_NAME}
+      PRIVATE hip::host
+      PRIVATE hip::hiprand)
+
+    target_include_directories(${TEST_NAME} SYSTEM PRIVATE ${HIP_INCLUDE_DIR})
+
+    if(HIP_PLATFORM STREQUAL "nvidia")
+      target_compile_definitions(${TEST_NAME} PRIVATE __HIP_PLATFORM_NVIDIA__)
+      target_link_libraries(
+        ${TEST_NAME}
+        PRIVATE CUDA::cudart
+        PRIVATE CUDA::curand)
+    else()
+      target_compile_definitions(${TEST_NAME} PRIVATE __HIP_PLATFORM_AMD__)
+    endif()
   endif()
 
   target_compile_definitions(${TEST_NAME}
@@ -86,7 +106,23 @@ if(NESO_RNG_TOOLKIT_USING_CURAND)
     PRIVATE CUDA::cudart
     PRIVATE CUDA::curand)
 endif()
+if(NESO_RNG_TOOLKIT_USING_HIPRAND)
+  target_link_libraries(
+    ${EXECUTABLE}
+    PRIVATE hip::host
+    PRIVATE hip::hiprand)
+  target_include_directories(${EXECUTABLE} SYSTEM PRIVATE ${HIP_INCLUDE_DIR})
 
+  if(HIP_PLATFORM STREQUAL "nvidia")
+    target_compile_definitions(${EXECUTABLE} PRIVATE __HIP_PLATFORM_NVIDIA__)
+    target_link_libraries(
+      ${EXECUTABLE}
+      PRIVATE CUDA::cudart
+      PRIVATE CUDA::curand)
+  else()
+    target_compile_definitions(${EXECUTABLE} PRIVATE __HIP_PLATFORM_AMD__)
+  endif()
+endif()
 target_compile_definitions(${EXECUTABLE}
                            PRIVATE NESO_RNG_TOOLKIT_TEST_COMPILATION)
 target_compile_definitions(${EXECUTABLE}
